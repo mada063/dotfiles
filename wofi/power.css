@@ -1,3 +1,14 @@
+@define-color panel       rgba(37, 37, 44, 1);
+@define-color panel_tool  rgba(15, 15, 18, 1);
+
+@define-color text        #8c3901;
+@define-color light       #f5d8a3;
+@define-color text-light  #875a3b;
+@define-color accent      #BE5103;
+@define-color accent-opacity rgba(190, 81, 3, 0.5);
+@define-color power       #ff8c32;
+@define-color background  #0f0f12;
+
 * {
     font-family: "JetBrainsMono Nerd Font", monospace;
     font-size: 12px;
@@ -10,10 +21,30 @@
 window {
     background: rgba(15, 15, 18, 0.8);
     margin: 0px;
-    border: 1px solid #ff8c32;
-    color: #BE5103;
     width: 200px;
     height: 100px;
+    height: auto;
+    margin: auto;
+    border: none; /* Fjerner den gamle faste borderen */
+    color: @accent;
+
+    /* Venstre-kant styling: 4px utstikkere og striplet linje */
+    background-image:
+        linear-gradient(@accent, @accent), 
+        linear-gradient(@accent, @accent),
+        linear-gradient(to bottom, @accent-opacity 2px, transparent 2px);
+    
+    background-repeat: no-repeat, no-repeat, repeat-y;
+    
+    background-size:
+        4px 2px,   /* Topp utstikker */
+        4px 2px,   /* Bunn utstikker */
+        2px 6px;   /* Vertikal striplet linje */
+
+    background-position:
+        0 0,       
+        0 100%,    
+        0 0;       
 }
 
 window {
@@ -38,11 +69,15 @@ entry:focus {
 }
 
 #inner-box {
-    margin-top: 0;
+    margin-top: 4px;
+    height: fit-content;
+    width: fit-content;
 }
 
 #outer-box {
     background: transparent;
+    height: fit-content;
+    width: fit-content;
     border: none;
     box-shadow: none;
     margin: 0px;
@@ -56,24 +91,11 @@ entry:focus {
 }
 
 #text:first-child{
+    margin: 0.25rem 0.5rem; /* Gir luft til den nye linjen */
     padding: 0.3rem 0.3rem;
-    margin-left: 4px;
     border-radius: 0px;
-
-    border: none;
-    background-image:
-        linear-gradient(#BE5103 0%, #BE5103 100%),
-        linear-gradient(#BE5103 0%, #BE5103 100%),
-        linear-gradient(#BE5103 0%, #BE5103 100%);
-    background-repeat: no-repeat;
-    background-size:
-        1px 4px,   /* left bar  */
-        1px 4px,   /* right bar */
-        100% 1px;  /* bottom line */
-    background-position:
-    0 100%,
-    100% 100%,
-    0 100%;
+    background-color: @panel;
+    color: @text-light;
 }
 
 #entry {
@@ -94,33 +116,11 @@ entry:focus {
 
 #text:first-child:selected {
     outline: none;
-    background-color: transparent;
-    background-image:
-    linear-gradient(#ff8c32 0%, #ff8c32 100%),
-    linear-gradient(#ff8c32 0%, #ff8c32 100%),
-    linear-gradient(#ff8c32 0%, #ff8c32 100%);
-  background-repeat: no-repeat;
-  background-size:
-    1px 4px,
-    1px 4px,
-    100% 1px;
-  background-position:
-    0 100%,
-    100% 100%,
-    0 100%;
+    background-color: @panel;
 }
 
 #text:selected {
     background: transparent;
-    color: #ff8c32;
+    color: @power;
     font-weight: 600;
-}
-
-@keyframes subtleGlow {
-    0%, 100% {
-        opacity: 0.5;
-    }
-    50% {
-        opacity: 0.8;
-    }
 }
