@@ -1,3 +1,15 @@
+@define-color panel       rgba(37, 37, 44, 1);
+@define-color panel_tool  rgba(15, 15, 18, 1);
+
+@define-color text        #8c3901;
+@define-color light       #f5d8a3;
+@define-color text-light  #875a3b;
+@define-color accent      #BE5103;
+@define-color accent-opacity rgba(190, 81, 3, 0.5);
+@define-color power       #ff8c32;
+@define-color saturated   #d48c32;
+@define-color background  #0f0f12;
+
 * {
     font-family: "JetBrainsMono Nerd Font", monospace;
     font-size: 12px;
@@ -10,8 +22,27 @@
 window {
     background: rgba(15, 15, 18, 0.8);
     margin: 0px;
-    border: 1px solid #ff8c32;
-    color: #BE5103;
+    border: none;
+    color: @accent;
+
+    background-image:
+        /* De to 4px utstikkerne (topp og bunn) */
+        linear-gradient(@accent, @accent), 
+        linear-gradient(@accent, @accent),
+        /* Den vertikale striplede linjen */
+        linear-gradient(to bottom, @accent-opacity 2px, transparent 2px);
+    
+    background-repeat: no-repeat, no-repeat, repeat-y;
+    
+    background-size:
+        4px 2px,   /* Topp utstikker */
+        4px 2px,   /* Bunn utstikker */
+        2px 6px;   /* Vertikal striplet linje */
+
+    background-position:
+        0 0,       /* Topp venstre */
+        0 100%,    /* Bunn venstre */
+        0 0;       /* Langs hele venstre kant */
 }
 
 entry:focus,
@@ -26,11 +57,11 @@ entry:focus,
     margin-top: 4px;
     margin-right: 4px;
     margin-left: 4px;
-    border: 1px solid #0f0f12;
-    background: #0f0f12;
+    border: none;
+    background: none;
     border-radius: 0px;
     padding: 0.3rem;
-    color: #BE5103;
+    color: @accent;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -38,8 +69,8 @@ entry:focus,
     outline: none !important;
     outline-style: none !important;
     outline-width: 0 !important;
-    border: 1px solid #ff8c32;
-    background: #0f0f12;
+    border: none;
+    background: none;
     box-shadow: none !important;  
 }
 
@@ -55,27 +86,6 @@ entry:focus,
 #scroll {
     margin: 0px;
     border-radius: 0px;
-}
-
-#text:first-child{
-    padding: 0.3rem 0.3rem;
-    margin-left: 4px;
-    border-radius: 0px;
-
-    border: none;
-    background-image:
-        linear-gradient(#BE5103 0%, #BE5103 100%),
-        linear-gradient(#BE5103 0%, #BE5103 100%),
-        linear-gradient(#BE5103 0%, #BE5103 100%);
-    background-repeat: no-repeat;
-    background-size:
-        1px 4px,   /* left bar  */
-        1px 4px,   /* right bar */
-        100% 1px;  /* bottom line */
-    background-position:
-    0 100%,
-    100% 100%,
-    0 100%;
 }
 
 #entry {
@@ -94,35 +104,50 @@ entry:focus,
     background-color: transparent;
 }
 
+#text:first-child {
+    margin: 0.25rem 0.5rem; 
+    padding: 0.3rem 0.3rem;
+    border-radius: 0px;
+    background-color: @panel;
+
+    /*
+    background-image:
+        linear-gradient(rgba(190, 81, 3, 0.5) 0%, rgba(190, 81, 3, 0.5) 100%),
+        linear-gradient(rgba(190, 81, 3, 0.5) 0%, rgba(190, 81, 3, 0.5) 100%),
+        linear-gradient(rgba(190, 81, 3, 0.5) 0%, rgba(190, 81, 3, 0.5) 100%);
+    background-repeat: no-repeat;
+    background-size:
+        1px 4px,   
+        1px 4px,   
+        100% 1px;  
+    background-position:
+        0 100%,
+        100% 100%,
+        0 100%;
+        */
+}
+
 #text:first-child:selected {
     outline: none;
-    background-color: transparent;
-    background-image:
-    linear-gradient(#ff8c32 0%, #ff8c32 100%),
-    linear-gradient(#ff8c32 0%, #ff8c32 100%),
-    linear-gradient(#ff8c32 0%, #ff8c32 100%);
-  background-repeat: no-repeat;
-  background-size:
-    1px 4px,
-    1px 4px,
-    100% 1px;
-  background-position:
-    0 100%,
-    100% 100%,
-    0 100%;
+    background-color: @panel;
+    /*background-image:
+        linear-gradient(#ff8c32 0%, #ff8c32 100%),
+        linear-gradient(#ff8c32 0%, #ff8c32 100%),
+        linear-gradient(#ff8c32 0%, #ff8c32 100%);
+    background-repeat: no-repeat;
+    background-size:
+        1px 4px,
+        1px 4px,
+        100% 1px;
+    background-position:
+        0 100%,
+        100% 100%,
+        0 100%;
+        */
 }
 
 #text:selected {
     background: transparent;
-    color: #ff8c32;
+    color: @power;
     font-weight: 600;
-}
-
-@keyframes subtleGlow {
-    0%, 100% {
-        opacity: 0.5;
-    }
-    50% {
-        opacity: 0.8;
-    }
 }

@@ -20,8 +20,7 @@
 /* --- Global --- */
 * {
   font-family: "JetBrainsMono Nerd Font", monospace;
-  font-size: 12px;    linear-gradient(@accent, @accent), /* Høyre stolpe  */
-
+  font-size: 12px;
   font-weight: 400;
   padding: 0;
   min-height: 0;
@@ -169,7 +168,9 @@
 #backlight,
 #network,
 #battery,
-#custom-files {
+#cpu,
+#custom-gpu,
+#memory{
   background: @panel;
   color: @accent;
   margin: 0.5rem 0.125rem;
@@ -200,7 +201,10 @@
 #backlight:hover,
 #network:hover,
 #battery:hover,
-#custom-files:hover {
+#custom-files:hover,
+#cpu:hover,
+#custom-gpu:hover,
+#memory:hover {
   color: @power;
   background: @panel;
   /*
@@ -231,17 +235,20 @@
 #pulseaudio,
 #backlight,
 #clock,
-#custom-files {
+#custom-files,
+#cpu,
+#custom-gpu,
+#memory {
   padding-left: 1rem;
   padding-right: 1rem;
   letter-spacing: 0;
 }
 
-#bluetooth {
+#cpu {
   margin-left: 0.5rem;
 }
 
-#battery {
+#clock {
   margin-right: 0.5rem;
 }
 
@@ -367,9 +374,10 @@
    =========================================================== */
 
 tooltip {
+  background: transparent;
   background: @panel;
   color: @accent;
-  border: 1px solid rgba(255, 140, 50, 0.35);
-  padding: 5px 12px;
-  font-size: 12px;
+  border: solid 1px @accent;
+  border-radius: 0px;
+  padding: 0.5rem 0.5rem;
 }
