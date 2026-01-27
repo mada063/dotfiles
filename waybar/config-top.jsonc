@@ -1,0 +1,115 @@
+{
+  "layer": "top",
+  "position": "top",
+  "spacing": 4,
+  "margin-bottom": 0,
+  "margin-top": 0,
+  "margin-right": 4,
+  "margin-left": 4,
+
+  "modules-left": [
+    "hyprland/workspaces"
+  ],
+
+  "modules-right": [
+    "bluetooth",
+    "network",
+    "pulseaudio",
+    "backlight",
+    "clock",
+    "battery"
+  ],
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "format-icons": {
+      "active": "▶",
+      "default": "▷"
+    },
+    "on-click": "activate",
+    "on-scroll-up": "hyprctl dispatch workspace e+1",
+    "on-scroll-down": "hyprctl dispatch workspace e-1"
+  },
+
+  "clock": {
+    "timezone": "Europe/Oslo",
+    "tooltip": true,
+    "format": "{:%H:%M:%S}",
+    "tooltip-format": "{:%d-%m-%Y}",
+    "interval": 1
+  },
+
+  "cpu": {
+    "interval": 1,
+    "format": "  {usage:>2}%",
+    "tooltip-format": "{usage}% CPU\n{load}",
+    "on-click": "kitty -e htop"
+  },
+
+  "memory": {
+    "interval": 5,
+    "format": "  {used:0.1f}G/{total:0.1f}G",
+    "tooltip-format": "Used: {used:0.1f}G\nFree: {avail:0.1f}G",
+    "on-click": "kitty -e htop"
+  },
+
+  "pulseaudio": {
+  "format": "{volume}",
+	"scroll-step": 1,
+  "on-click": "kitty -e pulsemixer"
+  },
+
+
+  "network": {
+  "interface": "wlp2s0",
+	"format": "OFFLINE",
+	"format-wifi": "{essid}",
+	"format-ethernet": "{ifname}",
+	"format-disconnected": "DISCONNECTED",
+	"tooltip-format": "{ifname}",
+	"tooltip-format-wifi": "{essid} ({signalStrength}%)",
+	"tooltip-format-ethernet": "{ifname}",
+	"tooltip-format-disconnected": "Disconnected",
+	"max-length": 50,
+  "on-click": "kitty -e nmtui"
+  },
+
+  "backlight": {
+    "format": "{percent}",
+    "tooltip": true
+  },
+
+    "battery": {
+  "interval": 2,
+  "states": {
+    "low": 33,
+    "critical": 10,
+    "high": 90,
+    "medium": 66
+  },
+  "format": "FULL",
+  "format-charging": "CHG",
+  "format-plugged": "PLUG",
+  "format-high": "HIGH",
+  "format-medium": "MEDIUM",
+  "format-low": "LOW",
+  "format-critical": "CRIT",
+  "tooltip-format": "{capacity}% ({time})",
+  "on-click": "~/.config/waybar/scripts/battery-notify.sh"
+  },
+
+ "bluetooth": {
+	"format": "BLUETOOTH",
+  "format-off": "OFFLINE",
+	"format-connected": "{device_alias}",
+	"format-connected-battery": "{device_alias}",
+  "on-click": "kitty -e bluetuith",
+  
+	"tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
+	"tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
+	"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+	"tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%"
+}
+
+
+}

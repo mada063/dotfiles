@@ -1,0 +1,37 @@
+{
+  "layer": "top",
+  "position": "bottom",
+  "spacing": 4,
+  "margin-bottom": 4,
+  "margin-top": 0,
+  "margin-right": 4,
+  "margin-left": 4,
+  
+  "modules-left": [
+    "custom/files"
+  ],
+  
+  "modules-center": [
+  ],
+  
+  "modules-right": [
+    "custom/focused-window"
+  ],
+
+  "custom/files": {
+    "format": "FILES",
+    "on-click": "kitty yazi ~",
+    "on-click-right": "kitty yazi /",
+    "tooltip": "Left click: Open root\nRight click: Open home"
+  },
+
+  "custom/focused-window": {
+    "format": "{}",
+    "exec": "~/.config/waybar/scripts/focused-window.sh",
+    "return-type": "json",
+    "interval": 1,
+    "max-length": 40,
+    "escape": true,
+    "tooltip": false
+  }
+}

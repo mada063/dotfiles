@@ -1,0 +1,128 @@
+* {
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    padding: 0px;
+    min-height: 0px;
+    margin: 0px;
+}
+
+window {
+    background: rgba(15, 15, 18, 0.8);
+    margin: 0px;
+    border: 1px solid #ff8c32;
+    color: #BE5103;
+}
+
+entry:focus,
+#input:focus,
+#input:focus-within {
+    box-shadow: none;
+    -gtk-outline-style: none;
+    -gtk-outline-color: transparent;
+}
+
+#input {
+    margin-top: 4px;
+    margin-right: 4px;
+    margin-left: 4px;
+    border: 1px solid #0f0f12;
+    background: #0f0f12;
+    border-radius: 0px;
+    padding: 0.3rem;
+    color: #BE5103;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#input:focus {
+    outline: none !important;
+    outline-style: none !important;
+    outline-width: 0 !important;
+    border: 1px solid #ff8c32;
+    background: #0f0f12;
+    box-shadow: none !important;  
+}
+
+#outer-box {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    margin: 0px;
+    padding: 0px;
+    border-radius: 0;
+}
+
+#scroll {
+    margin: 0px;
+    border-radius: 0px;
+}
+
+#text:first-child{
+    padding: 0.3rem 0.3rem;
+    margin-left: 4px;
+    border-radius: 0px;
+
+    border: none;
+    background-image:
+        linear-gradient(#BE5103 0%, #BE5103 100%),
+        linear-gradient(#BE5103 0%, #BE5103 100%),
+        linear-gradient(#BE5103 0%, #BE5103 100%);
+    background-repeat: no-repeat;
+    background-size:
+        1px 4px,   /* left bar  */
+        1px 4px,   /* right bar */
+        100% 1px;  /* bottom line */
+    background-position:
+    0 100%,
+    100% 100%,
+    0 100%;
+}
+
+#entry {
+    margin: 0;
+    padding: 0;
+    transition: 
+        background-color 0.2s ease,
+        transform 0.2s cubic-bezier(0.23, 1, 0.32, 1),
+        box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+#entry:selected {
+    outline: none;
+    background-color: transparent;
+}
+
+#text:first-child:selected {
+    outline: none;
+    background-color: transparent;
+    background-image:
+    linear-gradient(#ff8c32 0%, #ff8c32 100%),
+    linear-gradient(#ff8c32 0%, #ff8c32 100%),
+    linear-gradient(#ff8c32 0%, #ff8c32 100%);
+  background-repeat: no-repeat;
+  background-size:
+    1px 4px,
+    1px 4px,
+    100% 1px;
+  background-position:
+    0 100%,
+    100% 100%,
+    0 100%;
+}
+
+#text:selected {
+    background: transparent;
+    color: #ff8c32;
+    font-weight: 600;
+}
+
+@keyframes subtleGlow {
+    0%, 100% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
