@@ -9,8 +9,8 @@ chosen=$(echo -e "$options" |
   wofi --dmenu \
        --sort-order=default \
        --hide-search \
-       --width=200 \
-       --height=125 \
+       --width=250 \
+       --height=150 \
        --no-history \
        --prompt '' \
        --style ~/.config/wofi/power.css)

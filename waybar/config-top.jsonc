@@ -13,14 +13,14 @@
 
   "modules-right": [
     "cpu",
-    "custom/gpu",
+    //"custom/gpu",
     "memory",
     "bluetooth",
     "network",
-    "pulseaudio",
-    "backlight",
-    "clock",
-    "battery"
+    "custom/audio",
+    "custom/backlight",
+    "custom/battery",
+    "clock"
   ],
 
   "hyprland/workspaces": {
@@ -73,8 +73,17 @@
   "on-click": "kitty -e pulsemixer"
   },
 
+  "custom/audio": {
+    "exec": "~/.config/waybar/scripts/audio-bars.sh",
+    "interval": 1,
+    "on-click": "kitty -e pulsemixer",
+    "on-scroll-up": "pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '[0-9]+(?=% )' | head -1 | xargs -I {} sh -c 'if [ {} -lt 100 ]; then pactl set-sink-volume @DEFAULT_SINK@ +1%; fi'",
+    "on-scroll-down": "pactl set-sink-volume @DEFAULT_SINK@ -1%",
+    "tooltip": false
+  },
 
   "network": {
+  "interface": "wlp2s0",
 	"format": "OFFLINE",
 	"format-wifi": "{essid}",
 	"format-ethernet": "{ifname}",
@@ -88,9 +97,26 @@
   },
 
   "backlight": {
-    "format": "{percent}",
+    "format": "{percent}BL",
     "tooltip": true
   },
+
+"custom/backlight": {
+    "exec": "~/.config/waybar/scripts/backlight-bars.sh",
+    "interval": 1,
+    "on-scroll-up": "brightnessctl set 1%+",
+    "on-scroll-down": "brightnessctl set 1%-",
+    "tooltip": false
+  },
+
+  "custom/battery": {
+    "exec": "~/.config/waybar/scripts/battery-grid.sh",
+    "interval": 10,
+    "return-type": "json",
+    "format": "{}",
+    "on-click": "~/.config/waybar/scripts/battery-notify.sh",
+    "tooltip": true
+},
 
     "battery": {
   "interval": 2,

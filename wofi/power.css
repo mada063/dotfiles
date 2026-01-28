@@ -7,7 +7,9 @@
 @define-color accent      #BE5103;
 @define-color accent-opacity rgba(190, 81, 3, 0.5);
 @define-color power       #ff8c32;
-@define-color background  #0f0f12;
+
+@define-color background  rgba(15, 15, 18, 0.8);
+@define-color desktop     rgba(17, 17, 17, 1);
 
 * {
     font-family: "JetBrainsMono Nerd Font", monospace;
@@ -19,12 +21,8 @@
 }
 
 window {
-    background: rgba(15, 15, 18, 0.8);
     margin: 0px;
-    width: 200px;
-    height: 100px;
-    height: auto;
-    margin: auto;
+    background: transparent;
     border: none; /* Fjerner den gamle faste borderen */
     color: @accent;
 
@@ -47,12 +45,6 @@ window {
         0 0;       
 }
 
-window {
-    width: 360px;
-    height: 240px;
-    margin: auto;
-}
-
 entry:focus {
     box-shadow: none;
     -gtk-outline-style: none;
@@ -70,18 +62,20 @@ entry:focus {
 
 #inner-box {
     margin-top: 4px;
-    height: fit-content;
-    width: fit-content;
+    border: none;
+    box-shadow: none;
 }
 
 #outer-box {
-    background: transparent;
+    border: none;
+    box-shadow: none;
     height: fit-content;
     width: fit-content;
     border: none;
     box-shadow: none;
-    margin: 0px;
-    padding: 0px;
+    padding: 0;
+    margin: 0.5rem;
+    background: @background;
     border-radius: 0;
 }
 
@@ -95,7 +89,7 @@ entry:focus {
     padding: 0.3rem 0.3rem;
     border-radius: 0px;
     background-color: @panel;
-    color: @text-light;
+    color: @accent;
 }
 
 #entry {

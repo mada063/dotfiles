@@ -147,7 +147,7 @@
   background: @panel;
   color: @accent;
   padding: 0px;
-  margin: 0.5rem 0rem;
+  margin: 0.75rem 0rem;
   border-radius: 0px;
   box-shadow: none;
 }
@@ -173,7 +173,7 @@
 #memory{
   background: @panel;
   color: @accent;
-  margin: 0.5rem 0.125rem;
+  margin: 0.75rem 0.125rem;
   border-radius: 0px;
   border: none;
 
@@ -245,11 +245,11 @@
 }
 
 #cpu {
-  margin-left: 0.5rem;
+  margin-left: 0.75rem;
 }
 
 #clock {
-  margin-right: 0.5rem;
+  margin-right: 0.75rem;
 }
 
 /* ===========================================================
@@ -264,7 +264,7 @@
   border-radius: 0;
   color: @accent;
   background: @panel;
-  margin: 0.5rem 0.25rem;
+  margin: 0.75rem 0.25rem;
   border: none;
 
   /*background-image:
@@ -306,12 +306,12 @@
 #workspaces button:first-child {
   border-top-left-radius: 0px;
   border-bottom-left-radius: 0px;
-  margin-left: 0.5rem;
+  margin-left: 0.75rem;
 }
 #workspaces button:last-child {
   border-top-right-radius: 0px;
   border-bottom-right-radius: 0px;
-  margin-right: 0.5rem;
+  margin-right: 0.75rem;
 }
 
 /* ===========================================================
@@ -328,6 +328,24 @@
 
 #network.disconnected { color: #8c3901; }
 
+#custom-audio,
+#custom-backlight {
+  font-size: 16px;
+  letter-spacing: -6px;
+}
+
+#custom-battery {
+  padding: 0;
+  margin: 0;
+  font-weight: 900;
+  font-size: 16px;
+  /* Vi fjerner eller reduserer denne hvis teksten krøller seg */
+  letter-spacing: -5px; 
+}
+
+#network {
+  min-width: 70px;
+}
 
 /* ===========================================================
    STATUS COLORS — BATTERY (5-tone dark-orange palette)
@@ -379,5 +397,5 @@ tooltip {
   color: @accent;
   border: solid 1px @accent;
   border-radius: 0px;
-  padding: 0.5rem 0.5rem;
+  padding: 0.75rem 0.75rem;
 }

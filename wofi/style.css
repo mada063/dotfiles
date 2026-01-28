@@ -8,7 +8,8 @@
 @define-color accent-opacity rgba(190, 81, 3, 0.5);
 @define-color power       #ff8c32;
 @define-color saturated   #d48c32;
-@define-color background  #0f0f12;
+@define-color background  rgba(15, 15, 18, 0.8);
+@define-color desktop     rgba(17, 17, 17);
 
 * {
     font-family: "JetBrainsMono Nerd Font", monospace;
@@ -20,7 +21,7 @@
 }
 
 window {
-    background: rgba(15, 15, 18, 0.8);
+    background: transparent;
     margin: 0px;
     border: none;
     color: @accent;
@@ -74,11 +75,12 @@ entry:focus,
     box-shadow: none !important;  
 }
 
+
 #outer-box {
-    background: transparent;
+    background: @background;
     border: none;
     box-shadow: none;
-    margin: 0px;
+    margin: 0.5rem;
     padding: 0px;
     border-radius: 0;
 }
