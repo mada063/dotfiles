@@ -11,9 +11,16 @@ filled=$(( (brightness + 5) / 10 ))
 if [ $filled -gt 10 ]; then filled=10; fi
 empty=$(( 10 - filled ))
 
-res="<span color='#BE5103'>"
-for i in $(seq 1 $filled); do [ $i -le 10 ] && res+="|"; done
-res+="</span><span color='#be510380'>"
+res=""
+for i in $(seq 1 $filled); do 
+    if [ $i -ge 8 ]; then
+        res+="<span color='#ff8c32'>|</span>"
+    else
+        res+="<span color='#BE5103'>|</span>"
+    fi
+done
+
+res+="<span color='#be510380'>"
 for i in $(seq 1 $empty); do res+="|"; done
 res+="</span>"
 

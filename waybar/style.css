@@ -9,7 +9,7 @@
 @define-color light       #f5d8a3;
 @define-color text-light  #875a3b;
 @define-color accent      #BE5103;
-@define-color accent-opacity  rgba(190, 81, 3, 0.5);
+@define-color accent-opacity  rgba(190, 81, 3, 0.3);
 @define-color power       #ff8c32;
 @define-color saturated   #d48c32;
 @define-color background  #0f0f12;
@@ -143,6 +143,7 @@
    =========================================================== */
 
 #clock,
+#custom-clock,
 #custom-focused-window {
   background: @panel;
   color: @accent;
@@ -203,8 +204,9 @@
 #battery:hover,
 #custom-files:hover,
 #cpu:hover,
-#custom-gpu:hover,
-#memory:hover {
+#clock:hover,
+#custom-clock:hover,
+#custom-gpu:hover {
   color: @power;
   background: @panel;
   /*
@@ -235,6 +237,7 @@
 #pulseaudio,
 #backlight,
 #clock,
+#custom-clock,
 #custom-files,
 #cpu,
 #custom-gpu,
@@ -244,11 +247,13 @@
   letter-spacing: 0;
 }
 
-#cpu {
+#cpu,
+#custom-cpu {
   margin-left: 0.75rem;
 }
 
-#clock {
+#clock,
+#custom-clock {
   margin-right: 0.75rem;
 }
 

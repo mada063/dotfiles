@@ -33,9 +33,16 @@ for i in {0..4}; do
     start_range=$(( i * 20 ))
     end_range=$(( (i + 1) * 20 ))
     
+    # Sett farge for denne spesifikke blokka
+    # Hvis det er den siste blokka (i=4, dvs 80-100%) og status ikke er Charging
+    current_active=$active_color
+    if [ $i -eq 4 ] && [ "$status" != "Charging" ]; then
+        current_active="#ff8c32"
+    fi
+
     if [ "$percent" -ge "$end_range" ]; then
         # Hele blokka lyser
-        grid+="<span color='$active_color'>⣿</span>"
+        grid+="<span color='$current_active'>⣿</span>"
     elif [ "$percent" -le "$start_range" ]; then
         # Hele blokka er mørk (bakteppet)
         grid+="<span color='$inactive_color'>⣿</span>"
@@ -44,10 +51,7 @@ for i in {0..4}; do
         fill_level=$(( percent - start_range ))
         active_part=$(get_active_braille $fill_level)
         
-        # 1. Tegn den mørke "rammen" (alle 8 prikker)
-        # 2. Rykk tilbake med negativ spacing (må matche fontbredden din)
-        # 3. Tegn de aktive prikkene oppå
-        grid+="<span color='$inactive_color' letter_spacing='-15600'>⣿</span><span color='$active_color'>$active_part</span>"
+        grid+="<span color='$inactive_color' letter_spacing='-15600'>⣿</span><span color='$current_active'>$active_part</span>"
     fi
     grid+=" "
 done
