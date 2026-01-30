@@ -1,0 +1,123 @@
+@define-color panel       rgba(37, 37, 44, 1);
+@define-color panel_tool rgba(15, 15, 18, 1);
+
+@define-color text        #8c3901;
+@define-color light       #f5d8a3;
+@define-color text-light  #875a3b;
+@define-color accent      #BE5103;
+@define-color accent-opacity  rgba(190, 81, 3, 0.3);
+@define-color power       #ff8c32;
+@define-color saturated   #d48c32;
+@define-color background  #0f0f12;
+
+@define-color accent_soft rgba(255, 140, 50, 0.10);
+@define-color accent_hover rgba(255, 140, 50, 0.18);
+
+/* Hovedcontaineren for varslingen */
+.notification {
+  background-color: transparent;
+  border: none;
+  border-radius: 0px;
+  padding: 0;
+  margin: 0;
+  transition: background-color 0.2s ease-in-out;
+
+  /* 
+  background-image:
+    linear-gradient(@accent, @accent), 
+    linear-gradient(@accent, @accent),
+    linear-gradient(to right, @accent_opacity 2px, transparent 2px), 
+    linear-gradient(@accent, @accent),
+    linear-gradient(@accent, @accent), 
+    linear-gradient(to right, @accent_opacity 2px, transparent 2px); 
+  
+  background-repeat: no-repeat, no-repeat, repeat-x, no-repeat, no-repeat, repeat-x;;
+  
+  background-size:
+    2px 4px,   
+    2px 4px,   
+    6px 2px,   
+    2px 4px,   
+    2px 4px,   
+    6px 2px;  
+
+  background-position:
+    0 0px,      
+    100% 0px,   
+    0 0px,       
+    0 100%,     
+    100% 100%,   
+    2px 100%;     
+     */
+}
+
+/* Subtil hover-effekt */
+.notification:hover {
+  background-color: #0f0f1280 !important; /* Litt lysere og mindre transparent ved hover */
+}
+
+.close-button{
+  color: transparent;
+  background-color: transparent;
+}
+
+.close-button:hover{
+  color: transparent;
+  background-color: transparent;
+}
+
+.notification-row .notification-background .notification .notification-default-action:hover {
+  -gtk-icon-filter: none;
+  background: none;
+}
+/* Innholdet i varslingen */
+.notification-content {
+  background-color: rgba(37, 37, 44, 1);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin: 0.75rem 0.125rem;
+  border-radius: 0px;
+}
+
+.notification-content:hover .summary{
+  color: @power;
+}
+
+.notification-content:hover .body{
+  color: @power;
+}
+
+/* Fjerner ikon-området helt */
+.notification-icon {
+  display: none;
+}
+
+.summary {
+  color: @accent;
+  font-family: "monospace";
+  font-size: 12px;
+  background: transparent;
+}
+
+.body {
+  color: @accent; /* Accent farge på tekst som forespurt */
+  font-family: "monospace";
+  font-size: 12px;
+  background: transparent;
+}
+
+/* Fjerner standard marger og padding på widgets */
+.widget-title, .widget-label {
+  color: @accent;
+  font-family: "monospace";
+}
+
+/* Definerer fargene først */
+@define-color low_color #2a2a2a;
+@define-color normal_color #BE5103;
+@define-color critical_color #ff8c32;
+
+/* Setter variabelen basert på nivå */
+.notification.low { @define-color accent @low_color; }
+.notification.normal { @define-color accent @normal_color; }
+.notification.critical { @define-color accent @critical_color; }

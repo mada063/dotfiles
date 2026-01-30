@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test-logikk
+# --- BATTERI STATUS OG VARSLING ---
 if [ -z "$1" ]; then
     [ -d /sys/class/power_supply/BAT0 ] && PATH_BAT="/sys/class/power_supply/BAT0"
     [ -d /sys/class/power_supply/BAT1 ] && PATH_BAT="/sys/class/power_supply/BAT1"
@@ -11,11 +11,38 @@ else
     status="Discharging"
 fi
 
+# Logikk for automatiske varsler
+state_file="/tmp/battery_notif_state"
+
+send_alert() {
+    local level_name=$1
+    local urgency=$2
+    local message=$3
+    if [ ! -f "$state_file" ] || [ "$(cat $state_file)" != "$level_name" ]; then
+        notify-send -u "$urgency" "Battery $level_name" "$message"
+        echo "$level_name" > "$state_file"
+    fi
+}
+
+if [ "$status" = "Full" ] || [ "$percent" -eq 100 ]; then
+    send_alert "Full" "normal" "Batteriet er nå fullladet."
+elif [ "$status" = "Discharging" ]; then
+    if [ "$percent" -le 10 ]; then
+        send_alert "Critical" "critical" "Kritisk lavt batteri: $percent%"
+    elif [ "$percent" -le 33 ]; then
+        send_alert "Low" "normal" "Batteriet begynner å bli lavt: $percent%"
+    fi
+elif [ "$status" = "Charging" ]; then
+    # Nullstill varsling når vi lader, så de kommer på nytt ved neste utlading
+    [ -f "$state_file" ] && rm "$state_file"
+fi
+
+
+# --- GRID VISUALISERING ---
 active_color="#BE5103"
 inactive_color="#be510380"
 [ "$status" = "Charging" ] && active_color="#ff8c32"
 
-# Funksjon for aktive prikker (fra bunn til topp)
 get_active_braille() {
     local p=$1
     if [ "$p" -ge 18 ]; then echo "⣿";
@@ -25,7 +52,7 @@ get_active_braille() {
     elif [ "$p" -ge 8 ];  then echo "⣄";
     elif [ "$p" -ge 5 ];  then echo "⣀";
     elif [ "$p" -ge 2 ];  then echo "⡀";
-    else echo "⠀"; fi # Tomt tegn (blank Braille)
+    else echo "⠀"; fi
 }
 
 grid=""
@@ -33,24 +60,18 @@ for i in {0..4}; do
     start_range=$(( i * 20 ))
     end_range=$(( (i + 1) * 20 ))
     
-    # Sett farge for denne spesifikke blokka
-    # Hvis det er den siste blokka (i=4, dvs 80-100%) og status ikke er Charging
     current_active=$active_color
     if [ $i -eq 4 ] && [ "$status" != "Charging" ]; then
         current_active="#ff8c32"
     fi
 
     if [ "$percent" -ge "$end_range" ]; then
-        # Hele blokka lyser
         grid+="<span color='$current_active'>⣿</span>"
     elif [ "$percent" -le "$start_range" ]; then
-        # Hele blokka er mørk (bakteppet)
         grid+="<span color='$inactive_color'>⣿</span>"
     else
-        # DELVIS FYLLING MED OVERLAY:
         fill_level=$(( percent - start_range ))
         active_part=$(get_active_braille $fill_level)
-        
         grid+="<span color='$inactive_color' letter_spacing='-15600'>⣿</span><span color='$current_active'>$active_part</span>"
     fi
     grid+=" "
