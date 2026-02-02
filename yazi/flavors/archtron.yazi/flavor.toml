@@ -1,0 +1,252 @@
+# vim:fileencoding=utf-8:foldmethod=marker
+
+# : Manager {{{
+
+[mgr]
+cwd = { fg = "#ff8c32", bold = true }
+
+# Find
+find_keyword  = { fg = "#f5d8a3", bold = true, italic = true, underline = true }
+find_position = { fg = "#ff8c32", bg = "reset", bold = true }
+
+# Marker
+marker_copied   = { fg = "#0f0f12", bg = "#d48c32" }
+marker_cut      = { fg = "#0f0f12", bg = "#8c3901" }
+marker_marked   = { fg = "#0f0f12", bg = "#ff8c32" }
+marker_selected = { fg = "#0f0f12", bg = "#f5d8a3" }
+
+# Count
+count_copied   = { fg = "#0f0f12", bg = "#d48c32" }
+count_cut      = { fg = "#0f0f12", bg = "#8c3901" }
+count_selected = { fg = "#0f0f12", bg = "#f5d8a3" }
+
+# Border
+border_symbol = ""
+border_style  = { fg = "#875a3b" }
+
+# : }}}
+
+
+# : Tabs {{{
+
+[tabs]
+active   = { fg = "#BE5103", bg = "#25252c", bold = true }
+inactive = { fg = "#875a3b", bg = "#0f0f12" }
+
+# Separator
+sep_inner = { open = "█", close = "█" }
+sep_outer = { open = "█", close = "█" }
+
+# : }}}
+
+
+# : Mode {{{
+
+[mode]
+normal_main = { fg = "#BE5103", bg = "#25252c", bold = true }
+normal_alt = { fg = "#875a3b", bg = "#0f0f12" }
+
+select_main = { fg = "#0f0f12", bg = "#d48c32", bold = true }
+select_alt  = { fg = "#d48c32", bg = "#25252c" }
+
+unset_main = { fg = "#f5d8a3", bg = "#25252c", bold = true }
+unset_alt  = { fg = "#f5d8a3", bg = "#25252c" }
+
+# : }}}
+
+# : Indicator of hovered file {{{
+
+[indicator]
+parent  = { reversed = true }
+current = { reversed = true }
+preview = { underline = true }
+padding = { open = "█", close = "█" }
+
+
+# : Status bar {{{
+
+[status]
+overall   = {}
+sep_left  = { open = "█", close = "█" }
+sep_right = { open = "█", close = "█" }
+perm_sep   = { fg = "#875a3b" }
+perm_type  = { fg = "#ff8c32" }
+perm_read  = { fg = "#f5d8a3" }
+perm_write = { fg = "#8c3901" }
+perm_exec  = { fg = "#d48c32" }
+
+progress_label  = { fg = "#f5d8a3", bold = true }
+progress_normal = { fg = "#0f0f12", bg = "#d48c32" }
+progress_error  = { fg = "#0f0f12", bg = "#8c3901" }
+
+# : }}}
+
+
+# : Pick {{{
+
+[pick]
+border   = { fg = "#ff8c32" }
+active = { fg = "#ff8c32", bold = true }
+inactive = { fg = "#875a3b" }
+
+# : }}}
+
+
+# : Input {{{
+
+[input]
+border   = { fg = "#ff8c32" }
+title    = { fg = "#f5d8a3" }
+value    = { fg = "#BE5103" }
+selected = { reversed = true }
+
+# : }}}
+
+
+# : Completion {{{
+
+[cmp]
+border = { fg = "#ff8c32" }
+
+# : }}}
+
+
+# : Tasks {{{
+
+[tasks]
+border  = { fg = "#ff8c32" }
+title   = { fg = "#f5d8a3" }
+hovered = { fg = "#ff8c32", bold = true }
+
+# : }}}
+
+
+# : Which {{{
+
+[which]
+mask            = { bg = "#25252c" }
+cand            = { fg = "#ff8c32" }
+rest            = { fg = "#875a3b" }
+desc            = { fg = "#f5d8a3" }
+separator       = "  "
+separator_style = { fg = "#875a3b" }
+
+# : }}}
+
+
+# : Help {{{
+
+[help]
+on      = { fg = "#ff8c32" }
+run     = { fg = "#d48c32" }
+hovered = { reversed = true, bold = true }
+footer  = { fg = "#25252c", bg = "#f5d8a3" }
+
+# : }}}
+
+
+# : Spotter {{{
+
+[spot]
+border   = { fg = "#ff8c32" }
+title    = { fg = "#f5d8a3" }
+tbl_col  = { fg = "#ff8c32" }
+tbl_cell = { fg = "#0f0f12", bg = "#25252c" }
+
+# : }}}
+
+
+# : Notification {{{
+
+[notify]
+title_info  = { fg = "#d48c32" }
+title_warn  = { fg = "#f5d8a3" }
+title_error = { fg = "#8c3901" }
+
+# : }}}
+
+
+# : File-specific styles {{{
+
+[filetype]
+rules = [
+  { mime = "image/*", fg = "#d48c32" },
+  { mime = "{audio,video}/*", fg = "#f5d8a3" },
+  { mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive}", fg = "#ff8c32" },
+  { mime = "application/{pdf,doc,rtf}", fg = "#d48c32" },
+  { mime = "vfs/{absent,stale}", fg = "#875a3b" },
+  { url = "*", fg = "#8c3901" },
+  { url = "*/", fg = "#BE5103", bold = true },
+]
+
+# : }}}
+
+
+[icon]
+
+# Mapper / dirs
+dirs = [
+  { name = ".config",   text = "", fg = "#BE5103" },
+  { name = ".git",      text = "", fg = "#BE5103" },
+  { name = "Documents", text = "", fg = "#BE5103" },
+  { name = "Downloads", text = "", fg = "#BE5103" },
+  { name = "Pictures",  text = "", fg = "#BE5103" },
+  { name = "Music",     text = "", fg = "#BE5103" },
+  { name = "Videos",    text = "", fg = "#BE5103" },
+  { name = "Desktop",   text = "", fg = "#BE5103" },
+]
+
+# Filer / files (én samlet liste)
+files = [
+  # Config / dotfiles
+  { name = "*.toml", text = "", fg = "#d48c32" },
+  { name = "*.yaml", text = "", fg = "#d48c32" },
+  { name = "*.yml",  text = "", fg = "#d48c32" },
+  { name = "*.json", text = "", fg = "#d48c32" },
+  { name = "*.conf", text = "", fg = "#d48c32" },
+  { name = "*.qml",  text = "", fg = "#d48c32" },
+  { name = "*.css",  text = "", fg = "#d48c32" },
+
+  # Code
+  { name = "*.rs",   text = "", fg = "#d48c32" },
+  { name = "*.py",   text = "", fg = "#d48c32" },
+  { name = "*.js",   text = "", fg = "#d48c32" },
+  { name = "*.ts",   text = "", fg = "#d48c32" },
+  { name = "*.lua",  text = "", fg = "#d48c32" },
+  { name = "*.sh",   text = "", fg = "#d48c32" },
+
+  # Documents
+  { name = "*.md",   text = "", fg = "#f5d8a3" },
+  { name = "*.txt",  text = "", fg = "#f5d8a3" },
+  { name = "*.pdf",  text = "", fg = "#f5d8a3" },
+
+  # Media
+  { name = "*.png",  text = "", fg = "#875a3b" },
+  { name = "*.jpg",  text = "", fg = "#875a3b" },
+  { name = "*.jpeg", text = "", fg = "#875a3b" },
+  { name = "*.gif",  text = "", fg = "#875a3b" },
+  { name = "*.mp3",  text = "", fg = "#875a3b" },
+  { name = "*.mp4",  text = "", fg = "#875a3b" },
+
+  # Archives
+  { name = "*.zip",  text = "", fg = "#8c3901" },
+  { name = "*.tar",  text = "", fg = "#8c3901" },
+  { name = "*.gz",   text = "", fg = "#8c3901" },
+  { name = "*.xz",   text = "", fg = "#8c3901" },
+
+  # Fonts
+  { name = "*.ttf", text = "", fg = "#d48c32" },
+  { name = "*.otf", text = "", fg = "#d48c32" },
+]
+
+# Fallback / spesial
+conds = [
+  { if = "orphan", text = "", fg = "#8c3901" },
+  { if = "link",   text = "", fg = "#875a3b" },
+  { if = "dir",    text = "", fg = "#BE5103" },
+  { if = "exec",   text = "", fg = "#d48c32" },
+  { if = "!dir",   text = "", fg = "#8c3901" },
+]
+
+default_file_icon = ""
+default_dir_icon  = ""
