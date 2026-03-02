@@ -1,7 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.0
 import SddmComponents 2.0
-import QtQuick.VirtualKeyboard 2.3
 
 Rectangle {
     id: root
