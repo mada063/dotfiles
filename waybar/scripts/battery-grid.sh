@@ -38,43 +38,54 @@ elif [ "$status" = "Charging" ]; then
 fi
 
 
-# --- GRID VISUALISERING ---
+# --- GRID VISUALISERING (4 kolonner smooth) ---
+
 active_color="#BE5103"
 inactive_color="#be510380"
+
+# Charging override
 [ "$status" = "Charging" ] && active_color="#ff8c32"
 
-get_active_braille() {
-    local p=$1
-    if [ "$p" -ge 18 ]; then echo "⣿";
-    elif [ "$p" -ge 15 ]; then echo "⣷";
-    elif [ "$p" -ge 13 ]; then echo "⣶";
-    elif [ "$p" -ge 10 ]; then echo "⣤";
-    elif [ "$p" -ge 8 ];  then echo "⣄";
-    elif [ "$p" -ge 5 ];  then echo "⣀";
-    elif [ "$p" -ge 2 ];  then echo "⡀";
-    else echo "⠀"; fi
+get_braille_level() {
+    local value=$1
+
+    if   [ "$value" -ge 22 ]; then echo "⣿"
+    elif [ "$value" -ge 19 ]; then echo "⣷"
+    elif [ "$value" -ge 16 ]; then echo "⣶"
+    elif [ "$value" -ge 13 ]; then echo "⣤"
+    elif [ "$value" -ge 10 ]; then echo "⣄"
+    elif [ "$value" -ge 7  ]; then echo "⣀"
+    elif [ "$value" -ge 4  ]; then echo "⡀"
+    else echo "⠀"
+    fi
 }
 
 grid=""
-for i in {0..4}; do
-    start_range=$(( i * 20 ))
-    end_range=$(( (i + 1) * 20 ))
-    
-    current_active=$active_color
-    if [ $i -eq 4 ] && [ "$status" != "Charging" ]; then
-        current_active="#ff8c32"
+columns=4
+step=25
+
+for ((i=0; i<columns; i++)); do
+    start=$(( i * step ))
+    end=$(( start + step ))
+
+    if [ "$percent" -ge "$end" ]; then
+        # full kolonne
+        char="⣿"
+        color="$active_color"
+
+    elif [ "$percent" -le "$start" ]; then
+        # tom kolonne
+        char="⣿"
+        color="$inactive_color"
+
+    else
+        # smooth progress i denne kolonnen
+        local_value=$(( percent - start ))
+        char=$(get_braille_level "$local_value")
+        color="$active_color"
     fi
 
-    if [ "$percent" -ge "$end_range" ]; then
-        grid+="<span color='$current_active'>⣿</span>"
-    elif [ "$percent" -le "$start_range" ]; then
-        grid+="<span color='$inactive_color'>⣿</span>"
-    else
-        fill_level=$(( percent - start_range ))
-        active_part=$(get_active_braille $fill_level)
-        grid+="<span color='$inactive_color' letter_spacing='-15600'>⣿</span><span color='$current_active'>$active_part</span>"
-    fi
-    grid+=" "
+    grid+="<span color='$color'>$char</span> "
 done
 
 display_text="<span letter_spacing='0' size='9pt' font_weight='400'>BAT </span><span >$grid</span>"

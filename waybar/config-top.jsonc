@@ -107,17 +107,18 @@
   },
 
   "network": {
-  "interface": "wlp2s0",
-	"format": "OFFLINE",
-	"format-wifi": "{essid}",
-	"format-ethernet": "{ifname}",
-	"format-disconnected": "DISCONNECTED",
-	"tooltip-format": "{ifname}",
-	"tooltip-format-wifi": "{essid} ({signalStrength}%)",
-	"tooltip-format-ethernet": "{ifname}",
-	"tooltip-format-disconnected": "Disconnected",
-	"max-length": 50,
-  "on-click": "kitty -e nmtui"
+    "format": "OFFLINE",
+    "format-wifi": "WIFI",
+    "format-ethernet": "CABLED",
+    "format-disconnected": "DISCONNECTED",
+    "format-disabled": "OFFLINE",
+    "tooltip-format": "{ifname}",
+    "tooltip-format-wifi": "{essid} ({signalStrength}%)",
+    "tooltip-format-ethernet": "{ifname} — {ipaddr}",
+    "tooltip-format-disconnected": "Disconnected",
+    "tooltip-format-disabled": "Hardware missing or deactivated",
+    "max-length": 50,
+    "on-click": "kitty -e nmtui"
   },
 
   "backlight": {
@@ -137,6 +138,7 @@
     "exec": "~/.config/waybar/scripts/battery-grid.sh",
     "interval": 2,
     "return-type": "json",
+    "markup": "pango",
     "format": "{}",
     "on-click": "~/.config/waybar/scripts/battery-notify.sh",
     "tooltip": true
