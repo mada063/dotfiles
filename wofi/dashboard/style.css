@@ -1,0 +1,124 @@
+@define-color accent #BE5103;
+@define-color accent_hi #FF8C32;
+@define-color accent_avg #8c3901;
+@define-color bg #25252C;
+@define-color accent_op rgba(190, 81, 3, 0.45);
+
+window {
+  font-family: "JetBrainsMono Nerd Font Mono", "JetBrains Mono", monospace;
+  font-size: 16px;
+  margin: 0px;
+  border: none;
+  background-color: transparent;
+  color: @accent;
+
+  /* Left-side decoration: two 4px "ticks" + dotted vertical line */
+  background-image:
+    linear-gradient(@accent, @accent),
+    linear-gradient(@accent, @accent),
+    linear-gradient(to bottom, @accent);
+
+  background-repeat: no-repeat, no-repeat, repeat-y;
+
+  background-size:
+    6px 2px, /* top tick */
+    6px 2px, /* bottom tick */
+    2px 6px; /* line */
+
+  background-position:
+    0 0,
+    0 100%,
+    0 0;
+}
+
+entry:focus {
+  box-shadow: none;
+  -gtk-outline-style: none;
+  -gtk-outline-color: transparent;
+}
+
+#entry:selected {
+  background-color: transparent;
+}
+
+#text:first-child:selected {
+  background-color: @bg;
+}
+
+#text:selected {
+  background: transparent;
+  color: @accent;
+  font-weight: 600;
+}
+
+#entry {
+  padding: 0;
+  color: @accent;
+}
+
+#entry:selected {
+  background-color: transparent;
+  color: @accent;
+}
+
+entry:focus {
+  box-shadow: none;
+  -gtk-outline-style: none;
+  -gtk-outline-color: transparent;
+}
+
+#input {
+  padding: 0;
+  margin: 0;
+  max-height: 0;
+  height: 0;
+  border: none;
+  background-color: transparent;
+}
+
+#inner-box {
+  margin-top: 4px;
+  border: none;
+  box-shadow: none;
+}
+
+#outer-box {
+  border: none;
+  box-shadow: none;
+  height: fit-content;
+  width: fit-content;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0.5rem;
+  background: @bg;
+  border-radius: 0;
+}
+
+#scroll {
+  margin: 0px;
+  border-radius: 0px;
+}
+
+#text:first-child{
+  margin: 0.25rem 0.5rem; /* Gir luft til den nye linjen */
+  padding: 0.3rem 0.3rem;
+  border-radius: 0px;
+  background-color: @bg;
+  color: @accent;
+}
+
+#entry {
+  margin: 0;
+  padding: 0;
+  transition: 
+      background-color 0.2s ease,
+      transform 0.2s cubic-bezier(0.23, 1, 0.32, 1),
+      box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+list {
+  padding: 8px 0;
+}
