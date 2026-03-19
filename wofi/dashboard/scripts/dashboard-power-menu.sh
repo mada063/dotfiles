@@ -2,6 +2,8 @@
 
 # Power menu component – launched from the main dashboard.
 
+DASH_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
 options=$(cat <<EOF
 Shutdown
 Reboot
@@ -10,7 +12,13 @@ Logout
 EOF
 )
 
-choice="$(printf "%s\n" "$options" | wofi --dmenu --hide-search --prompt "Power" --cache-file=/dev/null)"
+choice="$(printf "%s\n" "$options" | wofi \
+  --normal-window \
+  --dmenu \
+  --hide-search \
+  --prompt "Power" \
+  --style "$DASH_DIR/style.css" \
+  --cache-file=/dev/null)"
 
 case "$choice" in
   "Shutdown")
