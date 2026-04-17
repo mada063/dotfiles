@@ -38,10 +38,10 @@ ScrollView {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: "transparent"
+                    color: root.dashboard.dashboardBackgroundColor
                     border.color: root.dashboard.dashboardAccent
                     border.width: root.dashboard.config.overlayBorderWidth
-                    radius: root.dashboard.config.rounding
+                    radius: root.dashboard.dashboardSurfaceRounding
 
                     RowLayout {
                         anchors.fill: parent
@@ -69,7 +69,7 @@ ScrollView {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 6
-                            Label { text: root.dashboard.osInfo; color: root.dashboard.config.textColor; wrapMode: Text.WordWrap; font.bold: true }
+                            Label { text: root.dashboard.osInfo; color: root.dashboard.dashboardTextColor; wrapMode: Text.WordWrap; font.bold: true }
                             Label { text: root.dashboard.wmInfo; color: root.dashboard.config.mutedTextColor; wrapMode: Text.WordWrap }
                             Label { text: root.dashboard.uptimeInfo; color: root.dashboard.config.mutedTextColor; wrapMode: Text.WordWrap }
                         }
@@ -86,10 +86,10 @@ ScrollView {
                 Rectangle {
                     Layout.preferredWidth: 210
                     Layout.fillHeight: true
-                    color: "transparent"
-                    border.color: root.dashboard.config.mutedTextColor
+                    color: root.dashboard.dashboardBackgroundColor
+                    border.color: root.dashboard.dashboardAccent
                     border.width: root.dashboard.config.overlayBorderWidth
-                    radius: root.dashboard.config.rounding
+                    radius: root.dashboard.dashboardSurfaceRounding
 
                     Column {
                         anchors.fill: parent
@@ -123,7 +123,7 @@ ScrollView {
                         Text {
                             property bool qsKeepPixelSize: true
                             text: root.dashboard.timeMinute
-                            color: root.dashboard.config.textColor
+                            color: root.dashboard.dashboardTextColor
                             font.pixelSize: root.dashboard.uiFontSize + 34
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
@@ -160,10 +160,10 @@ ScrollView {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: "transparent"
-                    border.color: root.dashboard.config.mutedTextColor
+                    color: root.dashboard.dashboardBackgroundColor
+                    border.color: root.dashboard.dashboardAccent
                     border.width: root.dashboard.config.overlayBorderWidth
-                    radius: root.dashboard.config.rounding
+                    radius: root.dashboard.dashboardSurfaceRounding
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -187,7 +187,7 @@ ScrollView {
                                 delegate: Label {
                                     required property var modelData
                                     text: modelData
-                                    color: root.dashboard.config.textColor
+                            color: root.dashboard.dashboardTextColor
                                     horizontalAlignment: Text.AlignHCenter
                                     Layout.fillWidth: true
                                 }
@@ -207,7 +207,7 @@ ScrollView {
                                     required property var modelData
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    radius: Math.max(0, root.dashboard.config.rounding - 4)
+                                    radius: Math.max(0, root.dashboard.dashboardSurfaceRounding - 4)
                                     color: modelData.today
                                         ? Qt.rgba(root.dashboard.dashboardAccent.r, root.dashboard.dashboardAccent.g, root.dashboard.dashboardAccent.b, 0.24)
                                         : modelData.weekend && modelData.inMonth
@@ -221,7 +221,7 @@ ScrollView {
                                         text: modelData.day
                                         color: !modelData.inMonth
                                             ? Qt.rgba(root.dashboard.config.textColor.r, root.dashboard.config.textColor.g, root.dashboard.config.textColor.b, 0.35)
-                                            : root.dashboard.config.textColor
+                                            : root.dashboard.dashboardTextColor
                                     }
                                 }
                             }
@@ -232,10 +232,10 @@ ScrollView {
                 Rectangle {
                     Layout.preferredWidth: root.dashboard.hasDiscreteGpu ? 150 : 126
                     Layout.fillHeight: true
-                    color: "transparent"
-                    border.color: root.dashboard.config.mutedTextColor
+                    color: root.dashboard.dashboardBackgroundColor
+                    border.color: root.dashboard.dashboardAccent
                     border.width: root.dashboard.config.overlayBorderWidth
-                    radius: root.dashboard.config.rounding
+                    radius: root.dashboard.dashboardSurfaceRounding
 
                     RowLayout {
                         anchors.fill: parent
@@ -402,16 +402,67 @@ ScrollView {
         Rectangle {
             Layout.preferredWidth: 230
             Layout.preferredHeight: dashboardOverviewLeft.implicitHeight
-            color: "transparent"
+            color: root.dashboard.dashboardBackgroundColor
             border.color: root.dashboard.dashboardAccent
             border.width: root.dashboard.config.overlayBorderWidth
-            radius: root.dashboard.config.rounding
+            radius: root.dashboard.dashboardSurfaceRounding
 
             ColumnLayout {
                 id: mediaColumn
                 anchors.fill: parent
                 anchors.margins: 12
                 spacing: 8
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Rectangle {
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        color: "transparent"
+                        border.width: root.dashboard.config.buttonBorderWidth
+                        border.color: root.dashboard.dashboardAccent
+                        radius: Math.max(0, root.dashboard.config.dashboardRounding - 2)
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "\u2699"
+                            color: root.dashboard.dashboardAccent
+                            font.pixelSize: root.dashboard.uiFontSize + 4
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: root.dashboard.shell.openControlCenter()
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        color: "transparent"
+                        border.width: root.dashboard.config.buttonBorderWidth
+                        border.color: root.dashboard.dashboardAccent
+                        radius: Math.max(0, root.dashboard.config.dashboardRounding - 2)
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "\u2728"
+                            color: root.dashboard.dashboardAccent
+                            font.pixelSize: root.dashboard.uiFontSize + 2
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: root.dashboard.shell.openThemeSelector()
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
 
                 Label {
                     text: "Media"
@@ -421,7 +472,7 @@ ScrollView {
 
                 Label {
                     text: root.dashboard.mediaInfo
-                    color: root.dashboard.config.textColor
+                    color: root.dashboard.dashboardTextColor
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
@@ -438,9 +489,9 @@ ScrollView {
                     implicitHeight: 34
                     color: "transparent"
                     border.width: root.dashboard.config.buttonBorderWidth
-                    border.color: root.dashboard.config.mutedTextColor
-                    radius: Math.max(0, root.dashboard.config.rounding - 3)
-                    Label { anchors.centerIn: parent; text: "Previous"; color: root.dashboard.config.textColor }
+                    border.color: root.dashboard.dashboardAccent
+                    radius: Math.max(0, root.dashboard.dashboardSurfaceRounding - 3)
+                    Label { anchors.centerIn: parent; text: "Previous"; color: root.dashboard.dashboardTextColor }
                     MouseArea { anchors.fill: parent; onClicked: root.mediaPrevProc.exec({ command: root.mediaPrevProc.command }) }
                 }
 
@@ -449,9 +500,9 @@ ScrollView {
                     implicitHeight: 34
                     color: "transparent"
                     border.width: root.dashboard.config.buttonBorderWidth
-                    border.color: root.dashboard.config.mutedTextColor
-                    radius: Math.max(0, root.dashboard.config.rounding - 3)
-                    Label { anchors.centerIn: parent; text: root.dashboard.mediaState === "Playing" ? "Pause" : "Play"; color: root.dashboard.config.textColor }
+                    border.color: root.dashboard.dashboardAccent
+                    radius: Math.max(0, root.dashboard.dashboardSurfaceRounding - 3)
+                    Label { anchors.centerIn: parent; text: root.dashboard.mediaState === "Playing" ? "Pause" : "Play"; color: root.dashboard.dashboardTextColor }
                     MouseArea { anchors.fill: parent; onClicked: root.mediaToggleProc.exec({ command: root.mediaToggleProc.command }) }
                 }
 
@@ -460,9 +511,9 @@ ScrollView {
                     implicitHeight: 34
                     color: "transparent"
                     border.width: root.dashboard.config.buttonBorderWidth
-                    border.color: root.dashboard.config.mutedTextColor
-                    radius: Math.max(0, root.dashboard.config.rounding - 3)
-                    Label { anchors.centerIn: parent; text: "Next"; color: root.dashboard.config.textColor }
+                    border.color: root.dashboard.dashboardAccent
+                    radius: Math.max(0, root.dashboard.dashboardSurfaceRounding - 3)
+                    Label { anchors.centerIn: parent; text: "Next"; color: root.dashboard.dashboardTextColor }
                     MouseArea { anchors.fill: parent; onClicked: root.mediaNextProc.exec({ command: root.mediaNextProc.command }) }
                 }
             }

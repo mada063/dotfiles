@@ -47,7 +47,7 @@ ScrollView {
                 spacing: 4
 
                 Label {
-                    text: "Hyprland"
+                    text: root.control.shell.detectedWindowManagerName
                     color: root.control.config.textColor
                     font.bold: true
                 }

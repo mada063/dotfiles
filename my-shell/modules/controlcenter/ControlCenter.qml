@@ -14,16 +14,24 @@ PanelWindow {
     readonly property string uiFontFamily: root.config.fontFamily
     readonly property int uiFontSize: root.config.fontPixelSize
     property int currentSectionIndex: 0
+    readonly property bool showWindowManagerSettings: root.shell.detectedWindowManagerKey === "hyprland"
+    readonly property bool showScreenSettings: root.shell.detectedWindowManagerKey === "hyprland"
     readonly property var availableThemes: (root.config.themeLibrary && root.config.themeLibrary.length > 0)
         ? root.config.themeLibrary
         : root.themePresets
-    readonly property var settingsSections: [
-        { title: "Appearance" },
-        { title: "Screen" },
-        { title: "Behavior" },
-        { title: "Hotkeys" },
-        { title: "Window Manager" }
-    ]
+    readonly property var settingsSections: {
+        let sections = [
+            { title: "Appearance" }
+        ];
+        if (root.showScreenSettings)
+            sections.push({ title: "Screen" });
+        sections.push({ title: "Behavior" });
+        sections.push({ title: "Hotkeys" });
+        if (root.showWindowManagerSettings)
+            sections.push({ title: root.shell.detectedWindowManagerName });
+        return sections;
+    }
+    readonly property int effectiveSectionIndex: Math.max(0, Math.min(root.currentSectionIndex, root.settingsSections.length - 1))
     property int accentR: 249
     property int accentG: 115
     property int accentB: 22
@@ -180,29 +188,8 @@ PanelWindow {
     function _activeThemePresetName() {
         for (let i = 0; i < availableThemes.length; i++) {
             const preset = availableThemes[i];
-            if (preset.themeMode !== root.config.themeMode)
-                continue;
-            if (_normColor(preset.accentColor) !== _normColor(root.config.accentColor))
-                continue;
-            if (_normColor(preset.borderColor) !== _normColor(root.config.borderColor))
-                continue;
-            if (_normColor(preset.backgroundColor) !== _normColor(root.config.backgroundColor))
-                continue;
-            if (_normColor(preset.textColor) !== _normColor(root.config.textColor))
-                continue;
-            if (_normColor(preset.workspaceAccentColor) !== _normColor(root.config.workspaceAccentColor))
-                continue;
-            if (_normColor(preset.workspaceColor) !== _normColor(root.config.workspaceColor))
-                continue;
-            if (_normColor(preset.volumeColor) !== _normColor(root.config.volumeColor))
-                continue;
-            if (_normColor(preset.quickSidebarColor) !== _normColor(root.config.quickSidebarColor))
-                continue;
-            if (_normColor(preset.dashboardColor) !== _normColor(root.config.dashboardColor))
-                continue;
-            if (_normColor(preset.overlayAccentColor || preset.accentColor) !== _normColor(root.config.overlayAccentColor))
-                continue;
-            return preset.name;
+            if (String(preset.id) === String(root.config.activeThemeId))
+                return preset.name;
         }
         return "Custom";
     }
@@ -257,6 +244,14 @@ PanelWindow {
 
     onUiFontFamilyChanged: _applyFontRecursive(root)
     onUiFontSizeChanged: _applyFontRecursive(root)
+    onShowWindowManagerSettingsChanged: {
+        if (!showWindowManagerSettings && currentSectionIndex >= settingsSections.length)
+            currentSectionIndex = settingsSections.length - 1;
+    }
+    onShowScreenSettingsChanged: {
+        if (!showScreenSettings && currentSectionIndex >= settingsSections.length)
+            currentSectionIndex = settingsSections.length - 1;
+    }
     onVisibleChanged: {
         if (visible)
             _syncAccentFromConfig();
@@ -354,11 +349,6 @@ PanelWindow {
                     Item { Layout.fillHeight: true }
 
                     Button {
-                        text: "Theme Studio"
-                        Layout.fillWidth: true
-                        onClicked: root.shell.themeWindowVisible = true
-                    }
-                    Button {
                         text: "Close"
                         Layout.fillWidth: true
                         onClicked: root.shell.controlCenterVisible = false
@@ -369,13 +359,23 @@ PanelWindow {
             StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                currentIndex: root.currentSectionIndex
+                currentIndex: root.effectiveSectionIndex
 
                 AppearanceTab { control: root }
-                ScreenTab { control: root }
+                Loader {
+                    active: root.showScreenSettings
+                    sourceComponent: Component {
+                        ScreenTab { control: root }
+                    }
+                }
                 BehaviorTab { control: root }
                 HotkeysTab { control: root }
-                HyprlandTab { control: root }
+                Loader {
+                    active: root.showWindowManagerSettings
+                    sourceComponent: Component {
+                        HyprlandTab { control: root }
+                    }
+                }
             }
         }
     }

@@ -36,6 +36,78 @@ monitors = cfg.get("hyprlandMonitors") or []
 binds = cfg.get("hyprlandBinds") or []
 workspace_rules = cfg.get("hyprlandWorkspaceRules") or []
 
+MODIFIER_MAP = {
+    "CTRL": "CTRL",
+    "ALT": "ALT",
+    "SHIFT": "SHIFT",
+    "META": "SUPER",
+    "SUPER": "SUPER",
+}
+
+KEY_MAP = {
+    "RETURN": "RETURN",
+    "ENTER": "RETURN",
+    "SPACE": "SPACE",
+    "TAB": "TAB",
+    "BACKTAB": "TAB",
+    "BACKSPACE": "BACKSPACE",
+    "DELETE": "DELETE",
+    "INSERT": "INSERT",
+    "ESC": "ESCAPE",
+    "ESCAPE": "ESCAPE",
+    "HOME": "HOME",
+    "END": "END",
+    "PGUP": "PAGEUP",
+    "PAGEDOWN": "PAGEDOWN",
+    "PGDN": "PAGEDOWN",
+    "LEFT": "LEFT",
+    "RIGHT": "RIGHT",
+    "UP": "UP",
+    "DOWN": "DOWN",
+    "PLUS": "PLUS",
+    "MINUS": "MINUS",
+    "EQUAL": "EQUAL",
+    "COMMA": "COMMA",
+    "PERIOD": "PERIOD",
+    "SLASH": "SLASH",
+    "BACKSLASH": "BACKSLASH",
+    "SEMICOLON": "SEMICOLON",
+    "APOSTROPHE": "APOSTROPHE",
+    "BRACKETLEFT": "BRACKETLEFT",
+    "BRACKETRIGHT": "BRACKETRIGHT",
+    "QUOTELEFT": "GRAVE",
+}
+
+def parse_shell_sequence(value):
+    parts = [part.strip() for part in str(value or "").split("+") if part.strip()]
+    if not parts:
+        return None
+    raw_key = parts[-1].upper()
+    key = KEY_MAP.get(raw_key, raw_key if len(raw_key) != 1 else raw_key.upper())
+    modifiers = []
+    for raw_modifier in parts[:-1]:
+        mapped = MODIFIER_MAP.get(raw_modifier.strip().upper())
+        if mapped and mapped not in modifiers:
+            modifiers.append(mapped)
+    return " ".join(modifiers), key
+
+def shell_global_binds(settings):
+    shortcuts = [
+        ("controlCenterEnableHotkey", "controlCenterHotkey", "control-center"),
+        ("dashboardEnableHotkey", "dashboardHotkey", "dashboard"),
+        ("sidebarEnableHotkey", "sidebarHotkey", "quick-sidebar"),
+    ]
+    lines = []
+    for enabled_key, sequence_key, name in shortcuts:
+        if not settings.get(enabled_key, False):
+            continue
+        parsed = parse_shell_sequence(settings.get(sequence_key, ""))
+        if not parsed:
+            continue
+        modifiers, key = parsed
+        lines.append(f"bind = {modifiers}, {key}, global, quickshell:{name}")
+    return lines
+
 lines = ["# Managed by Quickshell.", "# Manual edits may be overwritten.", ""]
 
 if not managed_enabled:
@@ -84,6 +156,12 @@ else:
         lines.append(monitor_line)
 
     if monitors:
+        lines.append("")
+
+    generated_shell_binds = shell_global_binds(cfg)
+    if generated_shell_binds:
+        lines.append("# Quickshell global shortcuts")
+        lines.extend(generated_shell_binds)
         lines.append("")
 
     for bind in binds:

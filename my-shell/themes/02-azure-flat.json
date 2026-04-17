@@ -1,0 +1,19 @@
+{
+  "id": "azure-flat",
+  "name": "Azure Flat",
+  "themeMode": "dark",
+  "general": {
+    "accentColor": "#32A5FF",
+    "borderColor": "#32A5FF",
+    "backgroundColor": "#101B24",
+    "textColor": "#0370BE",
+    "panelColor": "#23232A",
+    "mutedTextColor": "#7695AB",
+    "rounding": 0,
+    "borderWidth": 0,
+    "buttonBorderWidth": 0,
+    "overlayBorderWidth": 0,
+    "panelOpacity": 0.96,
+    "overlayDimOpacity": 0.4
+  }
+}

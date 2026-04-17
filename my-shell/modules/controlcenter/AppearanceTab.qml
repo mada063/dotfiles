@@ -27,97 +27,22 @@ ScrollView {
                 anchors.margins: 10
                 spacing: 8
 
-                RowLayout {
+                ColumnLayout {
                     Layout.fillWidth: true
+                    spacing: 4
 
-                    ColumnLayout {
+                    Label { text: "Themes"; color: root.control.config.textColor; font.bold: true }
+                    Label {
+                        text: "Themes are now preset-only and are selected from the dashboard theme screen."
+                        color: root.control.config.mutedTextColor
+                        wrapMode: Text.WordWrap
                         Layout.fillWidth: true
-                        spacing: 4
-
-                        Label { text: "Themes"; color: root.control.config.textColor; font.bold: true }
-                        Label {
-                            text: "Choose and apply a saved theme here. Detailed color editing now lives in Theme Studio."
-                            color: root.control.config.mutedTextColor
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
-                    }
-
-                    Button {
-                        text: "Open Theme Studio"
-                        onClicked: root.control.shell.themeWindowVisible = true
                     }
                 }
 
                 Label {
                     text: "Current: " + root.control.activeThemePresetName
                     color: root.control.config.mutedTextColor
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                    implicitHeight: themePresetFlow.implicitHeight
-
-                    Flow {
-                        id: themePresetFlow
-                        width: parent.width
-                        spacing: 8
-
-                        Repeater {
-                            model: root.control.availableThemes
-                            delegate: Rectangle {
-                                required property var modelData
-                                implicitWidth: 176
-                                implicitHeight: 64
-                                radius: root.control.config.rounding
-                                color: "transparent"
-                                border.width: root.control.config.buttonBorderWidth
-                                border.color: root.control.activeThemePresetName === modelData.name
-                                    ? root.control.config.accentColor
-                                    : root.control.config.mutedTextColor
-
-                                Column {
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    spacing: 6
-
-                                    Label {
-                                        text: modelData.name
-                                        color: root.control.config.textColor
-                                        font.bold: true
-                                    }
-
-                                    Row {
-                                        spacing: 6
-
-                                        Repeater {
-                                            model: [
-                                                modelData.backgroundColor,
-                                                modelData.accentColor,
-                                                modelData.textColor,
-                                                modelData.workspaceAccentColor,
-                                                modelData.overlayAccentColor
-                                            ]
-                                            delegate: Rectangle {
-                                                required property var modelData
-                                                width: 16
-                                                height: 16
-                                                radius: 4
-                                                color: modelData
-                                                border.width: 1
-                                                border.color: root.control.config.mutedTextColor
-                                            }
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: root.control._applyThemePreset(parent.modelData)
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }

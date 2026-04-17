@@ -33,7 +33,7 @@ PanelWindow {
 
     Rectangle {
         anchors.fill: parent
-        color: root.config.panelColor
+        color: root.config.barBackgroundColor
         border.color: root.config.borderColor
         border.width: root.config.borderWidth
         opacity: 0.96
@@ -45,7 +45,7 @@ PanelWindow {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         width: root.config.borderWidth
-        color: root.config.borderColor
+        color: root.config.barAccentColor
         z: 1000
     }
 
@@ -79,10 +79,11 @@ PanelWindow {
     property alias btDevices: barState.btDevices
     property alias activeWorkspaceIds: barState.activeWorkspaceIds
     property alias focusedWorkspaceId: barState.focusedWorkspaceId
+    property alias workspaceClients: barState.workspaceClients
     property bool statusMenuInputFocused: false
-    // Top bar uses width from the menu surface; side bar uses a fixed hug width (no circular binding).
+    // Top bar uses width from the menu surface; side bar uses an adaptive hug width.
     property bool statusMenuHugWidth: true
-    readonly property int sideMenuHugContentWidth: 228
+    property int sideMenuHugContentWidth: 228
     // Align to the layer surface right edge — not the centered status column (avoids large horizontal error).
     readonly property real statusAnchorX: Math.max(0, root.width - 1)
     readonly property string uiFontFamily: root.config.fontFamily
@@ -90,6 +91,10 @@ PanelWindow {
     readonly property int mediumPollMs: root.config.barMediumPollMs
     readonly property int slowPollMs: root.config.barSlowPollMs
     readonly property int workspacePollMs: root.config.barWorkspacePollMs
+    property int workspacePreviewId: 0
+    property real workspacePreviewTopY: 0
+    property bool workspacePreviewHovered: false
+    readonly property var workspacePreviewItems: _workspacePreviewItems(workspacePreviewId)
 
     BarState.BarSensorState {
         id: barState
@@ -97,6 +102,12 @@ PanelWindow {
         visible: root.visible
         includeLocks: false
         dateCommand: "date '+%H\n-\n%M\n-\n%S'"
+    }
+
+    FontMetrics {
+        id: sideMenuFontMetrics
+        font.family: root.uiFontFamily
+        font.pixelSize: root.uiFontSize
     }
 
     function _applyFontRecursive(node) {
@@ -194,6 +205,54 @@ PanelWindow {
         return Math.min(Math.max(0, root.config.rounding - 3), height / 2);
     }
 
+    function _itemTopY(item) {
+        if (!item)
+            return 0;
+        const point = item.mapToItem(null, 0, 0);
+        return Math.max(0, Number(point.y) || 0);
+    }
+
+    function _estimatedTextWidth(text, padding) {
+        return Math.ceil(sideMenuFontMetrics.averageCharacterWidth * String(text || "").length) + (padding || 0);
+    }
+
+    function _widestText(lines, padding) {
+        let width = 0;
+        for (let i = 0; i < lines.length; i++)
+            width = Math.max(width, _estimatedTextWidth(lines[i], padding || 0));
+        return width;
+    }
+
+    function _workspacePreviewItems(workspaceId) {
+        let out = [];
+        for (let i = 0; i < workspaceClients.length; i++) {
+            const client = workspaceClients[i];
+            if (Number(client.workspaceId) === Number(workspaceId))
+                out.push(client);
+        }
+        return out;
+    }
+
+    function _workspacePreviewTitle(client) {
+        const title = String(client.title || "").trim();
+        const className = String(client.className || client.initialClass || "").trim();
+        if (title.length > 0 && className.length > 0)
+            return title + " [" + className + "]";
+        return title.length > 0 ? title : (className.length > 0 ? className : "Window");
+    }
+
+    function openWorkspacePreview(workspaceId, item) {
+        workspacePreviewCloseTimer.stop();
+        workspacePreviewId = Number(workspaceId) || 0;
+        if (item)
+            workspacePreviewTopY = _itemTopY(item);
+    }
+
+    function queueWorkspacePreviewClose(workspaceId) {
+        if (workspacePreviewId === Number(workspaceId))
+            workspacePreviewCloseTimer.restart();
+    }
+
     function refreshStatusMenuData() {
         barState.refreshStatusMenuData();
     }
@@ -202,8 +261,46 @@ PanelWindow {
         barState.scheduleStatusRefresh();
     }
 
+    function _adaptiveSideMenuWidth(name) {
+        if (name === "battery")
+            return Math.max(150, Math.min(260, _widestText([
+                "Remaining: " + batteryPercent + "%",
+                "Remaining time: " + batteryTimeText,
+                "Status: " + batteryStatusText
+            ], 24)));
+        if (name === "audio") {
+            let width = _widestText([
+                "Volume: " + volumePercent + "%",
+                "Muted: " + (volumeMuted ? "yes" : "no")
+            ], 58);
+            for (let i = 0; i < audioOutputs.length; i++)
+                width = Math.max(width, _estimatedTextWidth(audioOutputs[i].description || "", 76));
+            for (let i = 0; i < audioInputs.length; i++)
+                width = Math.max(width, _estimatedTextWidth(audioInputs[i].description || "", 76));
+            return Math.max(200, Math.min(320, width));
+        }
+        if (name === "bt") {
+            let width = _widestText([btDetailText, "Bluetooth"], 58);
+            for (let i = 0; i < btDevices.length; i++) {
+                const device = btDevices[i];
+                width = Math.max(width, _estimatedTextWidth((device.name || "") + " " + (device.mac || "") + (device.connected ? " connected" : ""), 86));
+            }
+            return Math.max(200, Math.min(340, width));
+        }
+        if (name === "wifi") {
+            let width = _widestText([networkDisplayText, wifiDetailText], 58);
+            for (let i = 0; i < wifiNetworks.length; i++) {
+                const network = wifiNetworks[i];
+                width = Math.max(width, _estimatedTextWidth((network.ssid || "") + " " + (network.security || "") + " " + String(network.signal || 0) + "%", 92));
+            }
+            return Math.max(200, Math.min(320, width));
+        }
+        return 228;
+    }
+
     function openStatusMenu(name, chipY) {
         statusMenuTopY = Math.max(0, Number(chipY));
+        sideMenuHugContentWidth = _adaptiveSideMenuWidth(name);
         sideMenuCloseTimer.stop();
         statusMenuInputFocused = false;
         barState.handleStatusMenuOpened(name);
@@ -326,7 +423,7 @@ PanelWindow {
             Label {
                 text: "My"
                 visible: root.config.showShellTitle
-                color: root.config.accentColor
+                color: root.config.barAccentColor
                 font.bold: true
                 font.family: root.uiFontFamily
                 font.pixelSize: root.uiFontSize + 1
@@ -339,20 +436,23 @@ PanelWindow {
                     readonly property int wsId: Number(modelData)
                     implicitWidth: 26
                     implicitHeight: 22
-                    radius: root.config.rounding
-                    color: wsId === root.focusedWorkspaceId ? root.config.workspaceAccentColor : "transparent"
+                    radius: root.config.workspaceRounding
+                    color: wsId === root.focusedWorkspaceId ? root.config.workspaceAccentColor : root.config.workspaceBackgroundColor
                     border.width: root.config.buttonBorderWidth
-                    border.color: root.config.mutedTextColor
+                    border.color: root.config.barAccentColor
                     Label {
                         anchors.centerIn: parent
                         text: String(parent.wsId)
-                        color: parent.wsId === root.focusedWorkspaceId ? root.config.workspaceColor : root.config.textColor
+                        color: parent.wsId === root.focusedWorkspaceId ? root.config.workspaceColor : root.config.barTextColor
                         font.bold: true
                         font.family: root.uiFontFamily
                         font.pixelSize: root.uiFontSize
                     }
                     MouseArea {
                         anchors.fill: parent
+                        hoverEnabled: true
+                        onEntered: root.openWorkspacePreview(parent.wsId, parent)
+                        onExited: root.queueWorkspacePreviewClose(parent.wsId)
                         onClicked: wsSwitchProc.exec({
                             command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl dispatch workspace " + parent.wsId + "; fi"]
                         })
@@ -388,8 +488,8 @@ PanelWindow {
                 id: wifiChip
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
-                border.color: root.config.mutedTextColor
-                radius: root.config.rounding
+                border.color: root.config.barAccentColor
+                radius: root.config.barRounding
                 implicitWidth: root.sideBarStatusColumnMaxW
                 implicitHeight: 22
                 Layout.alignment: Qt.AlignHCenter
@@ -401,24 +501,24 @@ PanelWindow {
                     leftPadding: 2
                     rightPadding: 2
                     text: root.wifiText
-                    color: root.config.textColor
+                    color: root.config.barTextColor
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
                 }
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
-                    onEntered: root.openStatusMenu("wifi", contentRoot.y + statusCol.y + wifiChip.y)
+                    onEntered: root.openStatusMenu("wifi", root._itemTopY(wifiChip))
                     onExited: root.queueStatusMenuClose("wifi")
-                    onClicked: root.openStatusMenu("wifi", contentRoot.y + statusCol.y + wifiChip.y)
+                    onClicked: root.openStatusMenu("wifi", root._itemTopY(wifiChip))
                 }
             }
             Rectangle {
                 id: btChip
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
-                border.color: root.config.mutedTextColor
-                radius: root.config.rounding
+                border.color: root.config.barAccentColor
+                radius: root.config.barRounding
                 implicitWidth: 30
                 implicitHeight: 22
                 Layout.alignment: Qt.AlignHCenter
@@ -426,23 +526,23 @@ PanelWindow {
                     id: btLabel
                     anchors.centerIn: parent
                     text: root.btText
-                    color: root.config.textColor
+                    color: root.config.barTextColor
                     elide: Text.ElideRight
                 }
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
-                    onEntered: root.openStatusMenu("bt", contentRoot.y + statusCol.y + btChip.y)
+                    onEntered: root.openStatusMenu("bt", root._itemTopY(btChip))
                     onExited: root.queueStatusMenuClose("bt")
-                    onClicked: root.openStatusMenu("bt", contentRoot.y + statusCol.y + btChip.y)
+                    onClicked: root.openStatusMenu("bt", root._itemTopY(btChip))
                 }
             }
             Rectangle {
                 id: volChip
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
-                border.color: root.config.mutedTextColor
-                radius: root.config.rounding
+                border.color: root.config.barAccentColor
+                radius: root.config.barRounding
                 implicitWidth: 26
                 implicitHeight: 66
                 Layout.alignment: Qt.AlignHCenter
@@ -453,7 +553,7 @@ PanelWindow {
 
                     Label {
                         text: "VOL"
-                        color: root.config.textColor
+                        color: root.config.barTextColor
                         font.family: root.uiFontFamily
                         font.pixelSize: Math.max(9, root.uiFontSize - 1)
                         font.bold: true
@@ -479,7 +579,7 @@ PanelWindow {
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
-                    onEntered: root.openStatusMenu("audio", contentRoot.y + statusCol.y + volChip.y)
+                    onEntered: root.openStatusMenu("audio", root._itemTopY(volChip))
                     onExited: root.queueStatusMenuClose("audio")
                     onClicked: mouse => {
                         const ratio = Math.max(0, Math.min(1, 1 - (mouse.y / Math.max(1, volChip.height))));
@@ -501,8 +601,8 @@ PanelWindow {
                 id: batChip
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
-                border.color: root.config.mutedTextColor
-                radius: root.config.rounding
+                border.color: root.config.barAccentColor
+                radius: root.config.barRounding
                 implicitWidth: 28
                 implicitHeight: 72
                 Layout.alignment: Qt.AlignHCenter
@@ -513,7 +613,7 @@ PanelWindow {
 
                     Label {
                         text: "BAT"
-                        color: root.config.textColor
+                        color: root.config.barTextColor
                         font.family: root.uiFontFamily
                         font.pixelSize: Math.max(9, root.uiFontSize - 1)
                         font.bold: true
@@ -533,21 +633,90 @@ PanelWindow {
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
-                    onEntered: root.openStatusMenu("battery", contentRoot.y + statusCol.y + batChip.y)
+                    onEntered: root.openStatusMenu("battery", root._itemTopY(batChip))
                     onExited: root.queueStatusMenuClose("battery")
-                    onClicked: root.openStatusMenu("battery", contentRoot.y + statusCol.y + batChip.y)
+                    onClicked: root.openStatusMenu("battery", root._itemTopY(batChip))
                 }
             }
-            Rectangle {
-                implicitWidth: 34
-                implicitHeight: 22
-                radius: Math.max(0, root.config.rounding - 3)
-                border.width: root.config.buttonBorderWidth
-                border.color: root.config.mutedTextColor
-                color: "transparent"
-                Layout.alignment: Qt.AlignHCenter
-                Label { anchors.centerIn: parent; text: "Set"; color: root.config.textColor }
-                MouseArea { anchors.fill: parent; onClicked: root.shell.toggleControlCenter() }
+        }
+    }
+
+    PanelWindow {
+        id: workspacePreviewWindow
+        property bool shown: root.workspacePreviewId > 0
+        visible: shown || workspacePreviewPanel.opacity > 0.01
+        anchors {
+            top: true
+            left: true
+        }
+        margins {
+            top: root.workspacePreviewTopY
+            left: root.width
+        }
+        implicitWidth: 280
+        implicitHeight: workspacePreviewContent.implicitHeight + 16
+        exclusiveZone: 0
+        color: "transparent"
+
+        Rectangle {
+            id: workspacePreviewPanel
+            anchors.fill: parent
+            x: workspacePreviewWindow.shown ? 0 : -12
+            opacity: workspacePreviewWindow.shown ? 1 : 0
+            color: root.config.overlayBackgroundColor
+            border.color: root.config.overlayAccentColor
+            border.width: root.config.overlayBorderWidth
+            radius: root.config.overlayRounding
+
+            Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: 90 } }
+        }
+
+        Column {
+            id: workspacePreviewContent
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 6
+
+            Label {
+                text: "Workspace " + root.workspacePreviewId
+                color: root.config.overlayTextColor
+                font.family: root.uiFontFamily
+                font.pixelSize: root.uiFontSize
+                font.bold: true
+            }
+
+            Label {
+                visible: root.workspacePreviewItems.length < 1
+                text: "Empty workspace"
+                color: root.config.mutedTextColor
+                font.family: root.uiFontFamily
+                font.pixelSize: root.uiFontSize
+            }
+
+            Repeater {
+                model: root.workspacePreviewItems
+                delegate: Label {
+                    required property var modelData
+                    width: workspacePreviewWindow.implicitWidth - 16
+                    text: "\u2022 " + root._workspacePreviewTitle(modelData)
+                    color: root.config.textColor
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                    font.family: root.uiFontFamily
+                    font.pixelSize: root.uiFontSize
+                }
+            }
+        }
+
+        HoverHandler {
+            onHoveredChanged: {
+                root.workspacePreviewHovered = hovered;
+                if (hovered)
+                    workspacePreviewCloseTimer.stop();
+                else
+                    workspacePreviewCloseTimer.restart();
             }
         }
     }
@@ -563,7 +732,7 @@ PanelWindow {
             left: true
         }
         margins {
-            top: Math.max(0, Math.min(root.height - sideStatusMenu.implicitHeight - 8, root.statusMenuTopY))
+            top: Math.max(0, root.statusMenuTopY)
             left: root.statusAnchorX
         }
         implicitWidth: Math.max(120, sideStatusContent.implicitWidth + 16)
@@ -589,10 +758,10 @@ PanelWindow {
                 anchors.fill: parent
                 x: sideStatusMenu.shown ? 0 : -24
                 opacity: sideStatusMenu.shown ? 1 : 0
-                color: root.config.panelColor
+            color: root.config.overlayBackgroundColor
                 border.color: root.config.borderColor
                 border.width: root.config.overlayBorderWidth
-                radius: root.config.rounding
+            radius: root.config.overlayRounding
                 Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: 120 } }
 
@@ -668,6 +837,16 @@ PanelWindow {
     Process { id: btDiscoverableProc }
     Process { id: audioSinkSetProc }
     Process { id: audioSourceSetProc }
+    Timer {
+        id: workspacePreviewCloseTimer
+        interval: root.config.hoverReleaseMs
+        repeat: false
+        onTriggered: {
+            if (!root.workspacePreviewHovered)
+                root.workspacePreviewId = 0;
+        }
+    }
+
     Timer {
         id: hoverReleaseTimer
         interval: root.config.hoverReleaseMs

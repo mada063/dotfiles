@@ -1,0 +1,63 @@
+{
+  "id": "ember-all",
+  "name": "Ember All",
+  "themeMode": "dark",
+  "general": {
+    "accentColor": "#FF8C32",
+    "borderColor": "#FF8C32",
+    "backgroundColor": "#1C1612",
+    "textColor": "#BE5103",
+    "panelColor": "#23232A",
+    "mutedTextColor": "#9B765B",
+    "rounding": 0,
+    "borderWidth": 0,
+    "buttonBorderWidth": 0,
+    "overlayBorderWidth": 0,
+    "panelOpacity": 0.96,
+    "overlayDimOpacity": 0.4
+  },
+  "components": {
+    "bar": {
+      "backgroundColor": "#23232A",
+      "accentColor": "#FF8C32",
+      "textColor": "#BE5103",
+      "rounding": 0
+    },
+    "workspace": {
+      "backgroundColor": "#2C2018",
+      "accentColor": "#FF8C32",
+      "textColor": "#BE5103",
+      "rounding": 0
+    },
+    "dashboard": {
+      "backgroundColor": "#1E1B21",
+      "accentColor": "#FF8C32",
+      "textColor": "#BE5103",
+      "rounding": 0
+    },
+    "sidebar": {
+      "backgroundColor": "#1B171A",
+      "accentColor": "#FF8C32",
+      "textColor": "#BE5103",
+      "rounding": 0
+    },
+    "overlay": {
+      "backgroundColor": "#201A16",
+      "accentColor": "#FF8C32",
+      "textColor": "#BE5103",
+      "rounding": 0
+    },
+    "visualization": {
+      "backgroundColor": "#261D14",
+      "accentColor": "#FF8C32",
+      "textColor": "#BE5103",
+      "rounding": 0
+    },
+    "settings": {
+      "backgroundColor": "#211A17",
+      "accentColor": "#FF8C32",
+      "textColor": "#BE5103",
+      "rounding": 0
+    }
+  }
+}

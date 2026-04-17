@@ -1,15 +1,21 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Quickshell.Io
 
 ScrollView {
     id: root
 
     required property QtObject control
     property string recordingSequenceKey: ""
+    property var windowManagerBinds: []
+    property string windowManagerBindError: ""
 
     clip: true
 
+    readonly property string detectedWindowManagerName: String(root.control.shell.detectedWindowManagerName || "Window Manager")
+    readonly property string detectedWindowManagerKey: String(root.control.shell.detectedWindowManagerKey || "unknown")
+    readonly property bool supportsLiveWindowManagerBinds: root.detectedWindowManagerKey === "hyprland"
     readonly property var hotkeyDefaults: ({
         controlCenterHotkey: "Ctrl+Alt+C",
         dashboardHotkey: "Ctrl+Alt+D",
@@ -147,6 +153,84 @@ ScrollView {
             scope.forceActiveFocus();
     }
 
+    function _refreshWindowManagerBinds() {
+        if (!root.supportsLiveWindowManagerBinds) {
+            root.windowManagerBinds = [];
+            root.windowManagerBindError = "";
+            return;
+        }
+        root.windowManagerBindError = "";
+        windowManagerBindsProc.exec({ command: windowManagerBindsProc.command });
+    }
+
+    function _hyprModifierNames(modmask) {
+        const mask = Number(modmask) || 0;
+        let parts = [];
+        if (mask & 64)
+            parts.push("Super");
+        if (mask & 4)
+            parts.push("Ctrl");
+        if (mask & 8)
+            parts.push("Alt");
+        if (mask & 1)
+            parts.push("Shift");
+        if (mask & 16)
+            parts.push("Mod2");
+        if (mask & 32)
+            parts.push("Mod3");
+        if (mask & 128)
+            parts.push("Mod5");
+        return parts;
+    }
+
+    function _hyprKeyName(value) {
+        const text = String(value || "").trim();
+        if (!text.length)
+            return "(none)";
+        if (text.length === 1)
+            return text.toUpperCase();
+        return text.replace(/_/g, " ");
+    }
+
+    function _hyprSequence(bind) {
+        const modifiers = root._hyprModifierNames(bind ? bind.modmask : 0);
+        const keyLabel = bind && bind.mouse ? "Mouse" : root._hyprKeyName(bind ? bind.key : "");
+        return (modifiers.length > 0 ? modifiers.join("+") + "+" : "") + keyLabel;
+    }
+
+    function _hyprAction(bind) {
+        const dispatcher = String(bind && bind.dispatcher || "").trim();
+        const arg = String(bind && bind.arg || "").trim();
+        return arg.length > 0 ? dispatcher + " " + arg : dispatcher;
+    }
+
+    Component.onCompleted: root._refreshWindowManagerBinds()
+
+    Connections {
+        target: root.control.shell
+        function onDetectedWindowManagerKeyChanged() {
+            root._refreshWindowManagerBinds();
+        }
+    }
+
+    Process {
+        id: windowManagerBindsProc
+        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl binds -j; else echo '[]'; fi"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: {
+                try {
+                    const parsed = JSON.parse(String(text).trim() || "[]");
+                    root.windowManagerBinds = Array.isArray(parsed) ? parsed : [];
+                    root.windowManagerBindError = "";
+                } catch (error) {
+                    root.windowManagerBinds = [];
+                    root.windowManagerBindError = "Could not parse live " + root.detectedWindowManagerName + " binds.";
+                }
+            }
+        }
+    }
+
     ColumnLayout {
         width: parent.width
         spacing: 12
@@ -167,7 +251,9 @@ ScrollView {
 
                 Label { text: "Hotkeys"; color: root.control.config.textColor; font.bold: true }
                 Label {
-                    text: "These map directly to the live shell shortcuts. Click Record and press the combination you want to use."
+                    text: root.detectedWindowManagerKey === "hyprland"
+                        ? "These map to the live shell shortcuts and are also written back to Hyprland global binds when shell-managed Hyprland settings are enabled."
+                        : "These map directly to the live shell shortcuts. Click Record and press the combination you want to use."
                     color: root.control.config.mutedTextColor
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
@@ -274,6 +360,119 @@ ScrollView {
                             ? "Recording: press a shortcut, or Esc to cancel."
                             : "Current sequence: " + (root._sequenceValue(modelData.sequenceKey).length > 0 ? root._sequenceValue(modelData.sequenceKey) : "None")
                         color: root.control.config.textColor
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: wmBindsContent.implicitHeight + 20
+            color: "transparent"
+            border.width: root.control.config.overlayBorderWidth
+            border.color: root.control.config.mutedTextColor
+            radius: root.control.config.rounding
+
+            ColumnLayout {
+                id: wmBindsContent
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 8
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        Label {
+                            text: root.detectedWindowManagerName + " Binds"
+                            color: root.control.config.overlayAccentColor
+                            font.bold: true
+                        }
+
+                        Label {
+                            text: root.supportsLiveWindowManagerBinds
+                                ? "Live bindings reported by the current window manager."
+                                : "Live bind discovery is currently available for Hyprland sessions."
+                            color: root.control.config.mutedTextColor
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    Button {
+                        text: "Refresh"
+                        enabled: root.supportsLiveWindowManagerBinds
+                        onClicked: root._refreshWindowManagerBinds()
+                    }
+                }
+
+                Label {
+                    visible: root.windowManagerBindError.length > 0
+                    text: root.windowManagerBindError
+                    color: root.control.config.accentColor
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    visible: root.supportsLiveWindowManagerBinds && root.windowManagerBindError.length < 1 && root.windowManagerBinds.length < 1
+                    text: "No live binds were returned."
+                    color: root.control.config.mutedTextColor
+                }
+
+                Repeater {
+                    model: root.supportsLiveWindowManagerBinds ? root.windowManagerBinds : []
+                    delegate: Rectangle {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        implicitHeight: bindRowContent.implicitHeight + 16
+                        color: "transparent"
+                        border.width: root.control.config.buttonBorderWidth
+                        border.color: root.control.config.mutedTextColor
+                        radius: root.control.config.rounding
+
+                        ColumnLayout {
+                            id: bindRowContent
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 4
+
+                            RowLayout {
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: root._hyprSequence(modelData)
+                                    color: root.control.config.textColor
+                                    font.bold: true
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                Label {
+                                    visible: String(modelData.submap || "").length > 0
+                                    text: "Submap: " + String(modelData.submap || "")
+                                    color: root.control.config.mutedTextColor
+                                }
+                            }
+
+                            Label {
+                                text: root._hyprAction(modelData)
+                                color: root.control.config.textColor
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                visible: Boolean(modelData.has_description) && String(modelData.description || "").trim().length > 0
+                                text: String(modelData.description || "")
+                                color: root.control.config.mutedTextColor
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                        }
                     }
                 }
             }

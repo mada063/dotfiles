@@ -1,0 +1,19 @@
+{
+  "id": "lime-soft",
+  "name": "Lime Soft",
+  "themeMode": "dark",
+  "general": {
+    "accentColor": "#A5FF32",
+    "borderColor": "#A5FF32",
+    "backgroundColor": "#111C11",
+    "textColor": "#03BE51",
+    "panelColor": "#172417",
+    "mutedTextColor": "#6E8C62",
+    "rounding": 8,
+    "borderWidth": 1,
+    "buttonBorderWidth": 1,
+    "overlayBorderWidth": 1,
+    "panelOpacity": 0.96,
+    "overlayDimOpacity": 0.4
+  }
+}

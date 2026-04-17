@@ -37,7 +37,7 @@ PanelWindow {
     property string weatherTemp: "-"
     property string weatherSummary: "-"
     property string osInfo: "-"
-    property string wmInfo: "-"
+    property string wmInfo: "WM: " + root.shell.detectedWindowManagerName
     property string uptimeInfo: "-"
     property string mediaInfo: "-"
     property string mediaState: "-"
@@ -103,8 +103,10 @@ PanelWindow {
     readonly property int slowPollMs: Math.max(3000, root.config.dashboardSlowPollMs)
     readonly property string uiFontFamily: root.config.fontFamily
     readonly property int uiFontSize: root.config.fontPixelSize
-    readonly property color dashboardAccent: root.config.accentColor
-
+    readonly property color dashboardAccent: root.config.dashboardColor
+    readonly property color dashboardTextColor: root.config.dashboardTextColor
+    readonly property color dashboardBackgroundColor: root.config.dashboardBackgroundColor
+    readonly property int dashboardSurfaceRounding: root.config.dashboardRounding
     Behavior on cpuUsage { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     Behavior on gpuUsage { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     Behavior on ramPercent { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -232,11 +234,11 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         width: root.panelWidth
         height: root.panelHeight
-        color: root.config.panelColor
+        color: root.dashboardBackgroundColor
         opacity: root.config.panelOpacity
         border.color: root.dashboardAccent
         border.width: root.config.overlayBorderWidth
-        radius: root.config.rounding
+        radius: root.dashboardSurfaceRounding
         clip: true
         layer.enabled: true
 
@@ -270,8 +272,8 @@ PanelWindow {
                 background: Rectangle {
                     color: "transparent"
                     border.width: root.config.buttonBorderWidth
-                    border.color: root.config.mutedTextColor
-                    radius: root.config.rounding
+                    border.color: root.dashboardAccent
+                    radius: Math.max(0, root.dashboardSurfaceRounding - 2)
                 }
                 TabButton {
                     id: dashboardTabButton
@@ -282,11 +284,11 @@ PanelWindow {
                         radius: Math.max(0, root.config.rounding - 2)
                         color: dashboardTabButton.checked ? Qt.rgba(root.dashboardAccent.r, root.dashboardAccent.g, root.dashboardAccent.b, 0.18) : "transparent"
                         border.width: root.config.buttonBorderWidth
-                        border.color: dashboardTabButton.checked ? root.dashboardAccent : root.config.mutedTextColor
+                        border.color: dashboardTabButton.checked ? root.dashboardAccent : root.config.overlayAccentColor
                     }
                     contentItem: Text {
                         text: dashboardTabButton.text
-                        color: dashboardTabButton.checked ? root.dashboardAccent : root.config.textColor
+                        color: dashboardTabButton.checked ? root.dashboardAccent : root.dashboardTextColor
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.family: root.uiFontFamily
@@ -303,11 +305,11 @@ PanelWindow {
                         radius: Math.max(0, root.config.rounding - 2)
                         color: performanceTabButton.checked ? Qt.rgba(root.dashboardAccent.r, root.dashboardAccent.g, root.dashboardAccent.b, 0.18) : "transparent"
                         border.width: root.config.buttonBorderWidth
-                        border.color: performanceTabButton.checked ? root.dashboardAccent : root.config.mutedTextColor
+                        border.color: performanceTabButton.checked ? root.dashboardAccent : root.config.overlayAccentColor
                     }
                     contentItem: Text {
                         text: performanceTabButton.text
-                        color: performanceTabButton.checked ? root.dashboardAccent : root.config.textColor
+                        color: performanceTabButton.checked ? root.dashboardAccent : root.dashboardTextColor
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.family: root.uiFontFamily
@@ -386,15 +388,6 @@ PanelWindow {
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: root.osInfo = String(text).trim() || "-"
-        }
-    }
-
-    Process {
-        id: wmProc
-        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then echo \"WM: Hyprland\"; elif [ -n \"$XDG_CURRENT_DESKTOP\" ]; then echo \"WM: $XDG_CURRENT_DESKTOP\"; else echo 'WM: Unknown'; fi"]
-        stdout: StdioCollector {
-            waitForEnd: true
-            onStreamFinished: root.wmInfo = String(text).trim() || "-"
         }
     }
 
@@ -661,8 +654,6 @@ PanelWindow {
                 avatarProc.exec({ command: avatarProc.command });
             if (!osProc.running)
                 osProc.exec({ command: osProc.command });
-            if (!wmProc.running)
-                wmProc.exec({ command: wmProc.command });
             if (!uptimeProc.running)
                 uptimeProc.exec({ command: uptimeProc.command });
             if (!cpuInfoProc.running)

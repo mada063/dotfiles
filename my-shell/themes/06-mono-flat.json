@@ -1,0 +1,19 @@
+{
+  "id": "mono-flat",
+  "name": "Mono Flat",
+  "themeMode": "dark",
+  "general": {
+    "accentColor": "#FFFFFF",
+    "borderColor": "#FFFFFF",
+    "backgroundColor": "#1D1D1D",
+    "textColor": "#E9E9E9",
+    "panelColor": "#2A2A2A",
+    "mutedTextColor": "#AFAFAF",
+    "rounding": 0,
+    "borderWidth": 0,
+    "buttonBorderWidth": 0,
+    "overlayBorderWidth": 0,
+    "panelOpacity": 0.96,
+    "overlayDimOpacity": 0.4
+  }
+}

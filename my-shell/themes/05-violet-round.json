@@ -1,0 +1,19 @@
+{
+  "id": "violet-round",
+  "name": "Violet Round",
+  "themeMode": "dark",
+  "general": {
+    "accentColor": "#8C32FF",
+    "borderColor": "#8C32FF",
+    "backgroundColor": "#161225",
+    "textColor": "#5103BE",
+    "panelColor": "#211A36",
+    "mutedTextColor": "#8975A8",
+    "rounding": 18,
+    "borderWidth": 1,
+    "buttonBorderWidth": 1,
+    "overlayBorderWidth": 1,
+    "panelOpacity": 0.96,
+    "overlayDimOpacity": 0.4
+  }
+}

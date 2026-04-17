@@ -7,6 +7,7 @@ Item {
 
     property real percent: 0
     property color textColor: "#ffffff"
+    property color accentColor: textColor
     property bool horizontal: false
     property int barRadius: 0
 
@@ -27,6 +28,11 @@ Item {
         if (relative <= 0)
             return 0;
         return Math.max(0.25, Math.min(1, Math.ceil(relative * 4) / 4));
+    }
+
+    function segmentColor(index) {
+        const highestBand = root.horizontal ? 3 : 0;
+        return index === highestBand ? root.accentColor : root.textColor;
     }
 
     Column {
@@ -52,7 +58,7 @@ Item {
                     width: Math.round(parent.barW * parent.fillRatio)
                     height: parent.height
                     radius: root._r
-                    color: root.textColor
+                    color: root.segmentColor(index)
                 }
             }
         }
@@ -82,7 +88,7 @@ Item {
                     width: parent.width
                     height: Math.round(parent.barH * parent.fillRatio)
                     radius: root._r
-                    color: root.textColor
+                    color: root.segmentColor(index)
                 }
             }
         }

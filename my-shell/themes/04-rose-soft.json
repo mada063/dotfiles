@@ -1,0 +1,19 @@
+{
+  "id": "rose-soft",
+  "name": "Rose Soft",
+  "themeMode": "dark",
+  "general": {
+    "accentColor": "#FF32A5",
+    "borderColor": "#FF32A5",
+    "backgroundColor": "#1F1320",
+    "textColor": "#BE0370",
+    "panelColor": "#281828",
+    "mutedTextColor": "#A06D93",
+    "rounding": 8,
+    "borderWidth": 1,
+    "buttonBorderWidth": 1,
+    "overlayBorderWidth": 1,
+    "panelOpacity": 0.96,
+    "overlayDimOpacity": 0.4
+  }
+}

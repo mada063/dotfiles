@@ -94,11 +94,11 @@ PanelWindow {
             verticalCenter: parent.verticalCenter
         }
         x: root.targetOffset
-        color: root.config.panelColor
+        color: root.config.sidebarBackgroundColor
         opacity: root.config.panelOpacity
         border.color: root.config.quickSidebarColor
         border.width: root.config.overlayBorderWidth
-        radius: root.config.rounding
+        radius: root.config.sidebarRounding
 
         Behavior on x {
             NumberAnimation {
@@ -121,9 +121,9 @@ PanelWindow {
                     implicitWidth: 40
                     implicitHeight: root._cardHeight
                     color: "transparent"
-                    radius: root.config.rounding
+                    radius: root.config.sidebarRounding
                     border.width: root.config.buttonBorderWidth
-                    border.color: root.config.mutedTextColor
+                    border.color: root.config.quickSidebarColor
                     Layout.alignment: Qt.AlignHCenter
                     ColumnLayout {
                         anchors.fill: parent
@@ -132,7 +132,7 @@ PanelWindow {
 
                         Label {
                             text: "VOL"
-                            color: root.config.textColor
+                            color: root.config.sidebarTextColor
                             font.bold: true
                             Layout.alignment: Qt.AlignHCenter
                         }
@@ -145,7 +145,7 @@ PanelWindow {
                             Text {
                                 anchors.centerIn: parent
                                 text: root._flippedBars(root.volumeValue, root.volumeMuted, root.config.quickSidebarColor)
-                                color: root.config.textColor
+                                color: root.config.sidebarTextColor
                                 textFormat: Text.RichText
                                 rotation: -90
                                 transformOrigin: Item.Center
@@ -178,9 +178,9 @@ PanelWindow {
                     implicitWidth: 40
                     implicitHeight: root._cardHeight
                     color: "transparent"
-                    radius: root.config.rounding
+                    radius: root.config.sidebarRounding
                     border.width: root.config.buttonBorderWidth
-                    border.color: root.config.mutedTextColor
+                    border.color: root.config.quickSidebarColor
                     Layout.alignment: Qt.AlignHCenter
                     ColumnLayout {
                         anchors.fill: parent
@@ -189,7 +189,7 @@ PanelWindow {
 
                         Label {
                             text: "BRT"
-                            color: root.config.textColor
+                            color: root.config.sidebarTextColor
                             font.bold: true
                             Layout.alignment: Qt.AlignHCenter
                         }
@@ -202,7 +202,7 @@ PanelWindow {
                             Text {
                                 anchors.centerIn: parent
                                 text: root._flippedBars(root.brightnessValue, false, root.config.quickSidebarColor)
-                                color: root.config.textColor
+                                color: root.config.sidebarTextColor
                                 textFormat: Text.RichText
                                 rotation: -90
                                 transformOrigin: Item.Center

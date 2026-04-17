@@ -42,6 +42,7 @@ Item {
     property var btDevices: []
     property var activeWorkspaceIds: [1]
     property int focusedWorkspaceId: 1
+    property var workspaceClients: []
 
     function _shellQuoteSingle(value) {
         return String(value).replace(/'/g, "'\"'\"'");
@@ -115,6 +116,32 @@ Item {
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: root.focusedWorkspaceId = Number(String(text).trim()) || 1
+        }
+    }
+
+    Process { id: wsClientsProc
+        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl clients -j; else echo '[]'; fi"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: {
+                try {
+                    const parsed = JSON.parse(String(text).trim() || "[]");
+                    root.workspaceClients = Array.isArray(parsed)
+                        ? parsed.map(client => ({
+                            workspaceId: Number(client.workspace && client.workspace.id) || 0,
+                            title: String(client.title || "").trim(),
+                            className: String(client.class || "").trim(),
+                            initialClass: String(client.initialClass || "").trim(),
+                            address: String(client.address || "").trim(),
+                            floating: Boolean(client.floating),
+                            fullscreen: Boolean(client.fullscreen),
+                            monitor: Number(client.monitor) || 0
+                        })).filter(client => client.workspaceId > 0)
+                        : [];
+                } catch (e) {
+                    root.workspaceClients = [];
+                }
+            }
         }
     }
 
@@ -386,6 +413,7 @@ Item {
         onTriggered: {
             wsListProc.exec({ command: wsListProc.command });
             wsFocusedProc.exec({ command: wsFocusedProc.command });
+            wsClientsProc.exec({ command: wsClientsProc.command });
         }
     }
 
