@@ -166,20 +166,13 @@ ScrollView {
     function _hyprModifierNames(modmask) {
         const mask = Number(modmask) || 0;
         let parts = [];
-        if (mask & 64)
-            parts.push("Super");
-        if (mask & 4)
-            parts.push("Ctrl");
-        if (mask & 8)
-            parts.push("Alt");
-        if (mask & 1)
-            parts.push("Shift");
-        if (mask & 16)
-            parts.push("Mod2");
-        if (mask & 32)
-            parts.push("Mod3");
-        if (mask & 128)
-            parts.push("Mod5");
+        if (mask & 64)  parts.push("Super");
+        if (mask & 4)   parts.push("Ctrl");
+        if (mask & 8)   parts.push("Alt");
+        if (mask & 1)   parts.push("Shift");
+        if (mask & 16)  parts.push("Mod2");
+        if (mask & 32)  parts.push("Mod3");
+        if (mask & 128) parts.push("Mod5");
         return parts;
     }
 
@@ -233,249 +226,193 @@ ScrollView {
 
     ColumnLayout {
         width: parent.width
-        spacing: 12
+        spacing: 0
 
-        Rectangle {
+        // ── Shell Hotkeys ─────────────────────────────────────────────
+
+        Label { text: "Shell Hotkeys"; color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 4 }
+
+        Label {
+            text: root.detectedWindowManagerKey === "hyprland"
+                ? "These map to the live shell shortcuts and are written back to Hyprland global binds when shell-managed settings are enabled."
+                : "These map directly to the live shell shortcuts. Click Record and press the combination you want."
+            color: root.control.config.mutedTextColor
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            implicitHeight: introCard.implicitHeight + 20
-            color: "transparent"
-            border.width: root.control.config.overlayBorderWidth
-            border.color: root.control.config.mutedTextColor
-            radius: root.control.config.rounding
-
-            ColumnLayout {
-                id: introCard
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 6
-
-                Label { text: "Hotkeys"; color: root.control.config.textColor; font.bold: true }
-                Label {
-                    text: root.detectedWindowManagerKey === "hyprland"
-                        ? "These map to the live shell shortcuts and are also written back to Hyprland global binds when shell-managed Hyprland settings are enabled."
-                        : "These map directly to the live shell shortcuts. Click Record and press the combination you want to use."
-                    color: root.control.config.mutedTextColor
-                    wrapMode: Text.WordWrap
-                    Layout.fillWidth: true
-                }
-            }
+            Layout.bottomMargin: 10
         }
 
         Repeater {
             model: root.hotkeyRows
-            delegate: Rectangle {
+            delegate: ColumnLayout {
                 required property var modelData
                 Layout.fillWidth: true
-                implicitHeight: hotkeyCardContent.implicitHeight + 20
-                color: "transparent"
-                border.width: root.control.config.overlayBorderWidth
-                border.color: root.control.config.mutedTextColor
-                radius: root.control.config.rounding
-
-                ColumnLayout {
-                    id: hotkeyCardContent
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 8
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
-
-                            Label { text: modelData.title; color: root.control.config.overlayAccentColor; font.bold: true }
-                            Label {
-                                text: modelData.subtitle
-                                color: root.control.config.mutedTextColor
-                                wrapMode: Text.WordWrap
-                                Layout.fillWidth: true
-                            }
-                        }
-
-                        StyledCheckBox {
-                            text: "Enabled"
-                            control: root.control
-                            checked: Boolean(root.control.config[modelData.enabledKey])
-                            onToggled: root.control.config[modelData.enabledKey] = checked
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        FocusScope {
-                            id: captureScope
-                            Layout.fillWidth: true
-                            implicitHeight: recordButton.implicitHeight
-                            activeFocusOnTab: true
-
-                            Keys.onPressed: event => {
-                                if (root.recordingSequenceKey !== modelData.sequenceKey)
-                                    return;
-                                event.accepted = true;
-                                if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier) {
-                                    root.recordingSequenceKey = "";
-                                    return;
-                                }
-                                const sequence = root._sequenceFromEvent(event);
-                                if (!sequence.length)
-                                    return;
-                                root._setSequence(modelData.sequenceKey, sequence);
-                                root.recordingSequenceKey = "";
-                            }
-
-                            onActiveFocusChanged: {
-                                if (!activeFocus && root.recordingSequenceKey === modelData.sequenceKey)
-                                    root.recordingSequenceKey = "";
-                            }
-
-                            Button {
-                                id: recordButton
-                                anchors.fill: parent
-                                text: root.recordingSequenceKey === modelData.sequenceKey
-                                    ? "Press shortcut..."
-                                    : (root._sequenceValue(modelData.sequenceKey).length > 0
-                                        ? root._sequenceValue(modelData.sequenceKey)
-                                        : "Record shortcut")
-                                onClicked: root._startRecording(modelData.sequenceKey, captureScope)
-                            }
-                        }
-
-                        Button {
-                            text: "Default"
-                            onClicked: root._resetSequence(modelData.sequenceKey)
-                        }
-
-                        Button {
-                            text: "Clear"
-                            onClicked: root._setSequence(modelData.sequenceKey, "")
-                        }
-                    }
-
-                    Label {
-                        text: root.recordingSequenceKey === modelData.sequenceKey
-                            ? "Recording: press a shortcut, or Esc to cancel."
-                            : "Current sequence: " + (root._sequenceValue(modelData.sequenceKey).length > 0 ? root._sequenceValue(modelData.sequenceKey) : "None")
-                        color: root.control.config.textColor
-                    }
-                }
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: wmBindsContent.implicitHeight + 20
-            color: "transparent"
-            border.width: root.control.config.overlayBorderWidth
-            border.color: root.control.config.mutedTextColor
-            radius: root.control.config.rounding
-
-            ColumnLayout {
-                id: wmBindsContent
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 8
+                Layout.bottomMargin: 12
+                spacing: 6
 
                 RowLayout {
                     Layout.fillWidth: true
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 4
+                        spacing: 1
 
+                        Label { text: modelData.title; color: root.control.config.textColor; font.bold: true }
                         Label {
-                            text: root.detectedWindowManagerName + " Binds"
-                            color: root.control.config.overlayAccentColor
-                            font.bold: true
-                        }
-
-                        Label {
-                            text: root.supportsLiveWindowManagerBinds
-                                ? "Live bindings reported by the current window manager."
-                                : "Live bind discovery is currently available for Hyprland sessions."
+                            text: modelData.subtitle
                             color: root.control.config.mutedTextColor
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
                     }
 
-                    Button {
-                        text: "Refresh"
-                        enabled: root.supportsLiveWindowManagerBinds
-                        onClicked: root._refreshWindowManagerBinds()
+                    StyledCheckBox {
+                        text: "Enabled"
+                        control: root.control
+                        checked: Boolean(root.control.config[modelData.enabledKey])
+                        onToggled: root.control.config[modelData.enabledKey] = checked
                     }
                 }
 
-                Label {
-                    visible: root.windowManagerBindError.length > 0
-                    text: root.windowManagerBindError
-                    color: root.control.config.accentColor
-                    wrapMode: Text.WordWrap
+                RowLayout {
                     Layout.fillWidth: true
-                }
+                    spacing: 8
 
-                Label {
-                    visible: root.supportsLiveWindowManagerBinds && root.windowManagerBindError.length < 1 && root.windowManagerBinds.length < 1
-                    text: "No live binds were returned."
-                    color: root.control.config.mutedTextColor
-                }
-
-                Repeater {
-                    model: root.supportsLiveWindowManagerBinds ? root.windowManagerBinds : []
-                    delegate: Rectangle {
-                        required property var modelData
+                    FocusScope {
+                        id: captureScope
                         Layout.fillWidth: true
-                        implicitHeight: bindRowContent.implicitHeight + 16
-                        color: "transparent"
-                        border.width: root.control.config.buttonBorderWidth
-                        border.color: root.control.config.mutedTextColor
-                        radius: root.control.config.rounding
+                        implicitHeight: recordButton.implicitHeight
+                        activeFocusOnTab: true
 
-                        ColumnLayout {
-                            id: bindRowContent
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 4
-
-                            RowLayout {
-                                Layout.fillWidth: true
-
-                                Label {
-                                    text: root._hyprSequence(modelData)
-                                    color: root.control.config.textColor
-                                    font.bold: true
-                                }
-
-                                Item { Layout.fillWidth: true }
-
-                                Label {
-                                    visible: String(modelData.submap || "").length > 0
-                                    text: "Submap: " + String(modelData.submap || "")
-                                    color: root.control.config.mutedTextColor
-                                }
+                        Keys.onPressed: event => {
+                            if (root.recordingSequenceKey !== modelData.sequenceKey)
+                                return;
+                            event.accepted = true;
+                            if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier) {
+                                root.recordingSequenceKey = "";
+                                return;
                             }
-
-                            Label {
-                                text: root._hyprAction(modelData)
-                                color: root.control.config.textColor
-                                wrapMode: Text.WordWrap
-                                Layout.fillWidth: true
-                            }
-
-                            Label {
-                                visible: Boolean(modelData.has_description) && String(modelData.description || "").trim().length > 0
-                                text: String(modelData.description || "")
-                                color: root.control.config.mutedTextColor
-                                wrapMode: Text.WordWrap
-                                Layout.fillWidth: true
-                            }
+                            const sequence = root._sequenceFromEvent(event);
+                            if (!sequence.length)
+                                return;
+                            root._setSequence(modelData.sequenceKey, sequence);
+                            root.recordingSequenceKey = "";
                         }
+
+                        onActiveFocusChanged: {
+                            if (!activeFocus && root.recordingSequenceKey === modelData.sequenceKey)
+                                root.recordingSequenceKey = "";
+                        }
+
+                        Button {
+                            id: recordButton
+                            anchors.fill: parent
+                            text: root.recordingSequenceKey === modelData.sequenceKey
+                                ? "Press shortcut…"
+                                : (root._sequenceValue(modelData.sequenceKey).length > 0
+                                    ? root._sequenceValue(modelData.sequenceKey)
+                                    : "Record shortcut")
+                            onClicked: root._startRecording(modelData.sequenceKey, captureScope)
+                        }
+                    }
+
+                    Button { text: "Default"; onClicked: root._resetSequence(modelData.sequenceKey) }
+                    Button { text: "Clear"; onClicked: root._setSequence(modelData.sequenceKey, "") }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: root.control.config.mutedTextColor
+                    opacity: 0.15
+                }
+            }
+        }
+
+        Item { implicitHeight: 8 }
+
+        // ── Live WM Binds ─────────────────────────────────────────────
+
+        RowLayout {
+            Layout.fillWidth: true
+            Label { text: root.detectedWindowManagerName + " Binds"; color: root.control.config.accentColor; font.bold: true }
+            Item { Layout.fillWidth: true }
+            Button { text: "Refresh"; enabled: root.supportsLiveWindowManagerBinds; onClicked: root._refreshWindowManagerBinds() }
+        }
+
+        Label {
+            text: root.supportsLiveWindowManagerBinds
+                ? "Live bindings reported by the current window manager."
+                : "Live bind discovery is currently available for Hyprland sessions."
+            color: root.control.config.mutedTextColor
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.bottomMargin: 8
+        }
+
+        Label {
+            visible: root.windowManagerBindError.length > 0
+            text: root.windowManagerBindError
+            color: root.control.config.accentColor
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.topMargin: 4
+        }
+
+        Label {
+            visible: root.supportsLiveWindowManagerBinds && root.windowManagerBindError.length < 1 && root.windowManagerBinds.length < 1
+            text: "No live binds were returned."
+            color: root.control.config.mutedTextColor
+            Layout.topMargin: 4
+        }
+
+        Repeater {
+            model: root.supportsLiveWindowManagerBinds ? root.windowManagerBinds : []
+            delegate: Rectangle {
+                required property var modelData
+                Layout.fillWidth: true
+                implicitHeight: bindRowContent.implicitHeight + 12
+                color: "transparent"
+                border.width: root.control.config.buttonBorderWidth
+                border.color: root.control.config.mutedTextColor
+                radius: root.control.config.rounding
+                Layout.topMargin: 4
+
+                ColumnLayout {
+                    id: bindRowContent
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 2
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label { text: root._hyprSequence(modelData); color: root.control.config.textColor; font.bold: true }
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            visible: String(modelData.submap || "").length > 0
+                            text: "Submap: " + String(modelData.submap || "")
+                            color: root.control.config.mutedTextColor
+                        }
+                    }
+
+                    Label {
+                        text: root._hyprAction(modelData)
+                        color: root.control.config.mutedTextColor
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    Label {
+                        visible: Boolean(modelData.has_description) && String(modelData.description || "").trim().length > 0
+                        text: String(modelData.description || "")
+                        color: root.control.config.mutedTextColor
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
                     }
                 }
             }
         }
+
+        Item { implicitHeight: 8 }
     }
 }

@@ -413,57 +413,6 @@ ScrollView {
                 anchors.margins: 12
                 spacing: 8
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    Rectangle {
-                        Layout.preferredWidth: 34
-                        Layout.preferredHeight: 34
-                        color: "transparent"
-                        border.width: root.dashboard.config.buttonBorderWidth
-                        border.color: root.dashboard.dashboardAccent
-                        radius: Math.max(0, root.dashboard.config.dashboardRounding - 2)
-
-                        Label {
-                            anchors.centerIn: parent
-                            text: "\u2699"
-                            color: root.dashboard.dashboardAccent
-                            font.pixelSize: root.dashboard.uiFontSize + 4
-                            font.bold: true
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: root.dashboard.shell.openControlCenter()
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.preferredWidth: 34
-                        Layout.preferredHeight: 34
-                        color: "transparent"
-                        border.width: root.dashboard.config.buttonBorderWidth
-                        border.color: root.dashboard.dashboardAccent
-                        radius: Math.max(0, root.dashboard.config.dashboardRounding - 2)
-
-                        Label {
-                            anchors.centerIn: parent
-                            text: "\u2728"
-                            color: root.dashboard.dashboardAccent
-                            font.pixelSize: root.dashboard.uiFontSize + 2
-                            font.bold: true
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: root.dashboard.shell.openThemeSelector()
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
-                }
-
                 Label {
                     text: "Media"
                     color: root.dashboard.dashboardAccent

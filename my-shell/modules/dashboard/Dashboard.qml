@@ -10,6 +10,21 @@ PanelWindow {
 
     required property QtObject shell
     required property QtObject config
+    readonly property bool shown: root.shell.dashboardVisible || root.shell.dashboardTriggerHovered || root.shell.dashboardOverlayHovered
+    property bool overlayActive: shown
+    property bool overlayPresented: shown
+
+    onShownChanged: {
+        if (shown) {
+            overlayActive = true;
+            overlayPresented = false;
+            dashboardHideTimer.stop();
+            dashboardPresentTimer.restart();
+        } else if (overlayActive) {
+            overlayPresented = false;
+            dashboardHideTimer.restart();
+        }
+    }
 
     // Same as dashboard edge trigger: draw above the top bar so y=0 is the screen top.
     WlrLayershell.layer: WlrLayer.Overlay
@@ -30,7 +45,8 @@ PanelWindow {
     readonly property int basePanelHeight: Math.max(560, Math.min(760, Math.round(root.panelWidth * 0.64)))
     readonly property int overviewPanelHeight: Math.max(420, Math.min(760, overviewTab.implicitHeight + dashboardTabs.implicitHeight + 40))
     readonly property int panelHeight: dashboardTabs.currentIndex === 0 ? overviewPanelHeight : basePanelHeight
-    implicitHeight: root.visible ? root.panelHeight : 0
+    visible: root.config.dashboardEnabled && root.overlayActive
+    implicitHeight: root.panelHeight
     exclusiveZone: 0
 
     property string avatarText: "QS"
@@ -225,15 +241,17 @@ PanelWindow {
 
     MouseArea {
         anchors.fill: parent
-        enabled: root.visible
+        enabled: root.overlayActive
         onClicked: root.closeDashboard()
     }
 
     Rectangle {
-        anchors.top: parent.top
+        id: dashboardPanel
+        readonly property real hiddenY: -(root.panelHeight + 8)
         anchors.horizontalCenter: parent.horizontalCenter
         width: root.panelWidth
         height: root.panelHeight
+        y: root.overlayPresented ? 0 : hiddenY
         color: root.dashboardBackgroundColor
         opacity: root.config.panelOpacity
         border.color: root.dashboardAccent
@@ -242,13 +260,14 @@ PanelWindow {
         clip: true
         layer.enabled: true
 
-        transform: Translate {
-            y: root.visible ? 0 : -root.panelHeight
-            Behavior on y {
-                NumberAnimation {
-                    duration: 180
-                    easing.type: Easing.OutCubic
-                }
+        MouseArea {
+            anchors.fill: parent
+        }
+
+        Behavior on y {
+            NumberAnimation {
+                duration: 240
+                easing.type: Easing.OutCubic
             }
         }
 
@@ -660,6 +679,28 @@ PanelWindow {
                 cpuInfoProc.exec({ command: cpuInfoProc.command });
             if (!gpuInfoProc.running)
                 gpuInfoProc.exec({ command: gpuInfoProc.command });
+        }
+    }
+
+    Timer {
+        id: dashboardPresentTimer
+        interval: 16
+        repeat: false
+        onTriggered: {
+            if (root.shown)
+                root.overlayPresented = true;
+        }
+    }
+
+    Timer {
+        id: dashboardHideTimer
+        interval: 170
+        repeat: false
+        onTriggered: {
+            if (!root.shown) {
+                root.overlayPresented = false;
+                root.overlayActive = false;
+            }
         }
     }
 

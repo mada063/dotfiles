@@ -9,8 +9,12 @@ PanelWindow {
 
     required property QtObject shell
     required property QtObject config
-    focusable: true
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    readonly property bool shown: root.shell.controlCenterVisible
+    visible: root.shown || overlayDimmer.opacity > 0.01 || controlPanel.opacity > 0.01
+    focusable: root.shown
+    WlrLayershell.keyboardFocus: root.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.exclusionMode: ExclusionMode.Ignore
     readonly property string uiFontFamily: root.config.fontFamily
     readonly property int uiFontSize: root.config.fontPixelSize
     property int currentSectionIndex: 0
@@ -252,8 +256,8 @@ PanelWindow {
         if (!showScreenSettings && currentSectionIndex >= settingsSections.length)
             currentSectionIndex = settingsSections.length - 1;
     }
-    onVisibleChanged: {
-        if (visible)
+    onShownChanged: {
+        if (shown)
             _syncAccentFromConfig();
     }
     Component.onCompleted: {
@@ -270,8 +274,14 @@ PanelWindow {
     color: "#00000000"
 
     Rectangle {
+        id: overlayDimmer
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, root.config.overlayDimOpacity)
+        opacity: root.shown ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: 120 }
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -280,85 +290,124 @@ PanelWindow {
     }
 
     Rectangle {
+        id: controlPanel
+        property real offsetY: root.shown ? 0 : -24
         width: Math.min(parent.width - 48, 1120)
         height: Math.min(parent.height - 48, 860)
         anchors.centerIn: parent
-        focus: true
+        anchors.verticalCenterOffset: offsetY
+        focus: root.shown
         color: root.config.panelColor
         border.color: root.config.accentColor
         border.width: root.config.borderWidth
-        opacity: root.config.panelOpacity
+        z: 1
+        opacity: root.shown ? root.config.panelOpacity : 0
         radius: root.config.rounding
+        Behavior on offsetY {
+            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+        }
+
+        Behavior on opacity {
+            NumberAnimation { duration: 120 }
+        }
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
+            spacing: 0
 
-            Rectangle {
-                Layout.preferredWidth: 220
+            // ── Sidebar navigation ──────────────────────────────────────
+            ColumnLayout {
+                Layout.preferredWidth: 172
                 Layout.fillHeight: true
-                color: Qt.rgba(root.config.accentColor.r, root.config.accentColor.g, root.config.accentColor.b, 0.06)
-                border.color: root.config.accentColor
-                border.width: root.config.overlayBorderWidth
-                radius: root.config.rounding
+                Layout.topMargin: 20
+                Layout.leftMargin: 16
+                Layout.bottomMargin: 16
+                spacing: 2
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 8
+                Label {
+                    text: "Settings"
+                    color: root.config.accentColor
+                    font.bold: true
+                    font.pixelSize: root.uiFontSize + 1
+                    Layout.bottomMargin: 10
+                }
 
-                    Label {
-                        text: "Settings"
-                        color: root.config.textColor
-                        font.bold: true
-                    }
+                Repeater {
+                    model: root.settingsSections
+                    delegate: Item {
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        implicitHeight: 32
 
-                    Repeater {
-                        model: root.settingsSections
-                        delegate: Button {
-                            required property var modelData
-                            required property int index
-                            Layout.fillWidth: true
-                            implicitHeight: 34
-                            focusPolicy: Qt.StrongFocus
+                        Rectangle {
+                            anchors.fill: parent
+                            color: root.config.accentColor
+                            opacity: index === root.currentSectionIndex ? 0.08 : 0
+                            radius: root.config.rounding
+                        }
+
+                        Rectangle {
+                            width: 3
+                            height: parent.height - 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 1
+                            radius: 2
+                            color: index === root.currentSectionIndex ? root.config.accentColor : "transparent"
+                        }
+
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 12
                             text: modelData.title
+                            color: index === root.currentSectionIndex ? root.config.accentColor : root.config.textColor
+                            font.bold: index === root.currentSectionIndex
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: root.currentSectionIndex = index
-
-                            background: Rectangle {
-                                radius: Math.max(0, root.config.rounding - 2)
-                                color: index === root.currentSectionIndex
-                                    ? Qt.rgba(root.config.accentColor.r, root.config.accentColor.g, root.config.accentColor.b, 0.16)
-                                    : "transparent"
-                                border.width: root.config.buttonBorderWidth
-                                border.color: (index === root.currentSectionIndex || parent.activeFocus)
-                                    ? root.config.accentColor
-                                    : root.config.mutedTextColor
-                            }
-
-                            contentItem: Label {
-                                text: modelData.title
-                                color: index === root.currentSectionIndex ? root.config.accentColor : root.config.textColor
-                                font.bold: index === root.currentSectionIndex
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
                         }
                     }
+                }
 
-                    Item { Layout.fillHeight: true }
+                Item { Layout.fillHeight: true }
 
-                    Button {
+                Item {
+                    Layout.fillWidth: true
+                    implicitHeight: 28
+
+                    Label {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
                         text: "Close"
-                        Layout.fillWidth: true
+                        color: root.config.mutedTextColor
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: root.shell.controlCenterVisible = false
                     }
                 }
             }
 
+            // ── Thin separator ──────────────────────────────────────────
+            Rectangle {
+                Layout.fillHeight: true
+                width: 1
+                color: Qt.rgba(root.config.accentColor.r, root.config.accentColor.g, root.config.accentColor.b, 0.18)
+            }
+
+            // ── Content ─────────────────────────────────────────────────
             StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.margins: 16
                 currentIndex: root.effectiveSectionIndex
 
                 AppearanceTab { control: root }

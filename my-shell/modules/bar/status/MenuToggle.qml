@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../shared" as Shared
 
 RowLayout {
     id: root
@@ -22,27 +23,18 @@ RowLayout {
 
     Item { Layout.fillWidth: true }
 
-    Rectangle {
-        implicitWidth: root.toggleWidth
-        implicitHeight: root.toggleHeight
-        radius: root.host._toggleRadius(height)
-        color: root.checked ? Qt.rgba(root.host.config.overlayAccentColor.r, root.host.config.overlayAccentColor.g, root.host.config.overlayAccentColor.b, 0.28) : "transparent"
-        border.width: root.host.config.buttonBorderWidth
-        border.color: root.checked ? root.host.config.overlayAccentColor : root.host.config.mutedTextColor
-
-        Rectangle {
-            width: root.knobSize
-            height: root.knobSize
-            radius: root.host._toggleKnobRadius(height)
-            y: Math.max(0, Math.round((parent.height - height) / 2))
-            x: root.checked ? parent.width - width - 3 : 3
-            color: root.checked ? root.host.config.overlayAccentColor : root.host.config.textColor
-            Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: root.toggled()
-        }
+    Shared.SwitchPill {
+        switchWidth: root.toggleWidth
+        switchHeight: root.toggleHeight
+        knobSize: root.knobSize
+        checked: root.checked
+        rounding: root.host.config.rounding
+        onColor: Qt.rgba(root.host.config.overlayAccentColor.r, root.host.config.overlayAccentColor.g, root.host.config.overlayAccentColor.b, 0.28)
+        offColor: "transparent"
+        onBorderColor: root.host.config.overlayAccentColor
+        offBorderColor: root.host.config.mutedTextColor
+        onKnobColor: root.host.config.overlayAccentColor
+        offKnobColor: root.host.config.textColor
+        onToggled: root.toggled()
     }
 }

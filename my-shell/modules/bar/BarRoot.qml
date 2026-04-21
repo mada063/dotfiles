@@ -9,15 +9,25 @@ Scope {
     required property QtObject shell
     required property QtObject config
 
-    Bar.TopBar {
-        shell: root.shell
-        config: root.config
-        visible: root.config.barOrientation === "top"
-    }
+    Variants {
+        model: Quickshell.screens
 
-    Bar.SideBar {
-        shell: root.shell
-        config: root.config
-        visible: root.config.barOrientation === "left"
+        Scope {
+            property var modelData: null
+
+            Bar.TopBar {
+                shell: root.shell
+                config: root.config
+                screen: modelData
+                visible: root.config.barOrientation === "top"
+            }
+
+            Bar.SideBar {
+                shell: root.shell
+                config: root.config
+                screen: modelData
+                visible: root.config.barOrientation === "left"
+            }
+        }
     }
 }

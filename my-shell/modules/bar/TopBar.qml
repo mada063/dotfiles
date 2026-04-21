@@ -49,6 +49,11 @@ PanelWindow {
     property alias activeStatusMenu: barState.activeStatusMenu
     property real statusMenuLeftX: Math.max(0, root.width - 280)
     property int statusMenuWidth: 280
+    readonly property int wifiStatusMenuWidth: 350
+    readonly property int btStatusMenuWidth: 320
+    readonly property int audioStatusMenuWidth: 350
+    readonly property int batteryStatusMenuWidth: 220
+    readonly property int locksStatusMenuWidth: 132
     property alias wifiConnectSsid: barState.wifiConnectSsid
     property alias wifiConnectPassword: barState.wifiConnectPassword
     property alias btDeviceTarget: barState.btDeviceTarget
@@ -56,6 +61,8 @@ PanelWindow {
     property alias btDevices: barState.btDevices
     property alias activeWorkspaceIds: barState.activeWorkspaceIds
     property alias focusedWorkspaceId: barState.focusedWorkspaceId
+    readonly property var workspaceInfos: barState.workspaceInfos
+    readonly property var workspaceMonitors: barState.workspaceMonitors
     property alias workspaceClients: barState.workspaceClients
     property bool statusMenuInputFocused: false
     readonly property real statusMenuContentWidth: Math.max(240, statusMenuWindow.width - 16)
@@ -66,10 +73,29 @@ PanelWindow {
     readonly property int mediumPollMs: root.config.barMediumPollMs
     readonly property int slowPollMs: root.config.barSlowPollMs
     readonly property int workspacePollMs: root.config.barWorkspacePollMs
+    readonly property var barOverlayVisibility: root.config.barOverlayVisibility || ({})
     property int workspacePreviewId: 0
+    property int workspacePreviewDisplayId: 0
     property real workspacePreviewLeftX: 0
+    property real workspacePreviewAnchorCenterX: 0
+    property bool workspacePreviewShown: false
     property bool workspacePreviewHovered: false
-    readonly property var workspacePreviewItems: _workspacePreviewItems(workspacePreviewId)
+    readonly property var workspacePreviewItems: _workspacePreviewItems(workspacePreviewDisplayId)
+
+    readonly property string barMonitorName: root.screen ? root.screen.name : ""
+    readonly property var filteredWorkspaceIds: {
+        const name = barMonitorName;
+        if (!name.length)
+            return activeWorkspaceIds;
+        const infos = workspaceInfos;
+        return activeWorkspaceIds.filter(function(id) {
+            for (let i = 0; i < infos.length; i++) {
+                if (Number(infos[i].id) === Number(id))
+                    return String(infos[i].monitorName || "") === name;
+            }
+            return true;
+        });
+    }
 
     BarState.BarSensorState {
         id: barState
@@ -116,6 +142,13 @@ PanelWindow {
 
     function _shellQuoteSingle(value) {
         return String(value).replace(/'/g, "'\"'\"'");
+    }
+
+    function _barOverlayEnabled(name, fallback) {
+        const map = barOverlayVisibility || {};
+        if (map[name] === undefined)
+            return fallback;
+        return !!map[name];
     }
 
     function _levelBars(percent, steps) {
@@ -194,6 +227,12 @@ PanelWindow {
         return Math.max(0, Number(point.x) || 0);
     }
 
+    function _itemCenterX(item) {
+        if (!item)
+            return 0;
+        return _itemLeftX(item) + (Math.max(0, Number(item.width) || 0) / 2);
+    }
+
     function _estimatedTextWidth(text, padding) {
         return Math.ceil(statusMenuFontMetrics.averageCharacterWidth * String(text || "").length) + (padding || 0);
     }
@@ -223,11 +262,59 @@ PanelWindow {
         return title.length > 0 ? title : (className.length > 0 ? className : "Window");
     }
 
+    function _workspaceInfo(workspaceId) {
+        const targetId = Number(workspaceId) || 0;
+        for (let i = 0; i < workspaceInfos.length; i++) {
+            const info = workspaceInfos[i];
+            if (Number(info.id) === targetId)
+                return info;
+        }
+        return null;
+    }
+
+    function _workspacePreviewMonitor(workspaceId) {
+        const targetId = Number(workspaceId) || 0;
+        if (targetId < 1)
+            return null;
+        const info = _workspaceInfo(targetId);
+        if (info) {
+            for (let i = 0; i < workspaceMonitors.length; i++) {
+                const monitor = workspaceMonitors[i];
+                if (String(info.monitorName || "").length > 0 && String(monitor.name || "") === String(info.monitorName))
+                    return monitor;
+            }
+            for (let i = 0; i < workspaceMonitors.length; i++) {
+                const monitor = workspaceMonitors[i];
+                if (Number(monitor.id) === Number(info.monitorId))
+                    return monitor;
+            }
+        }
+        for (let i = 0; i < workspaceMonitors.length; i++) {
+            const monitor = workspaceMonitors[i];
+            if (Number(monitor.activeWorkspaceId) === targetId)
+                return monitor;
+        }
+        const items = _workspacePreviewItems(targetId);
+        for (let i = 0; i < items.length; i++) {
+            const targetMonitorId = Number(items[i].monitor);
+            for (let j = 0; j < workspaceMonitors.length; j++) {
+                const monitor = workspaceMonitors[j];
+                if (Number(monitor.id) === targetMonitorId)
+                    return monitor;
+            }
+        }
+        return workspaceMonitors.length > 0 ? workspaceMonitors[0] : null;
+    }
+
     function openWorkspacePreview(workspaceId, item) {
         workspacePreviewCloseTimer.stop();
         workspacePreviewId = Number(workspaceId) || 0;
-        if (item)
+        workspacePreviewDisplayId = workspacePreviewId;
+        workspacePreviewShown = workspacePreviewDisplayId > 0;
+        if (item) {
             workspacePreviewLeftX = _itemLeftX(item);
+            workspacePreviewAnchorCenterX = _itemCenterX(item);
+        }
     }
 
     function queueWorkspacePreviewClose(workspaceId) {
@@ -243,51 +330,19 @@ PanelWindow {
         barState.scheduleStatusRefresh();
     }
 
-    function _adaptiveStatusMenuWidth(name) {
-        if (name === "locks")
-            return 132;
-        if (name === "battery") {
-            return Math.max(170, Math.min(300, _widestText([
-                "Remaining: " + batteryPercent + "%",
-                "Remaining time: " + batteryTimeText,
-                "Status: " + batteryStatusText
-            ], 24)));
-        }
-        if (name === "audio") {
-            let width = _widestText([
-                "Volume: " + volumePercent + "%",
-                "Muted: " + (volumeMuted ? "yes" : "no")
-            ], 64);
-            for (let i = 0; i < audioOutputs.length; i++)
-                width = Math.max(width, _estimatedTextWidth(audioOutputs[i].description || "", 80));
-            for (let i = 0; i < audioInputs.length; i++)
-                width = Math.max(width, _estimatedTextWidth(audioInputs[i].description || "", 80));
-            return Math.max(210, Math.min(340, width));
-        }
-        if (name === "bt") {
-            let width = _widestText([btDetailText, "Bluetooth"], 64);
-            for (let i = 0; i < btDevices.length; i++) {
-                const device = btDevices[i];
-                width = Math.max(width, _estimatedTextWidth((device.name || "") + " " + (device.mac || "") + (device.connected ? " connected" : ""), 90));
-            }
-            return Math.max(220, Math.min(360, width));
-        }
-        if (name === "wifi") {
-            let width = _widestText([networkDisplayText, wifiDetailText], 64);
-            for (let i = 0; i < wifiNetworks.length; i++) {
-                const network = wifiNetworks[i];
-                width = Math.max(width, _estimatedTextWidth((network.ssid || "") + " " + (network.security || "") + " " + String(network.signal || 0) + "%", 96));
-            }
-            return Math.max(220, Math.min(340, width));
-        }
-        return 220;
-    }
-
     function openStatusMenu(name, chipX) {
         statusPopupCloseTimer.stop();
         statusMenuInputFocused = false;
         activeStatusMenu = name;
-        const desiredWidth = _adaptiveStatusMenuWidth(name);
+        let desiredWidth = wifiStatusMenuWidth;
+        if (name === "locks")
+            desiredWidth = locksStatusMenuWidth;
+        else if (name === "battery")
+            desiredWidth = batteryStatusMenuWidth;
+        else if (name === "audio")
+            desiredWidth = audioStatusMenuWidth;
+        else if (name === "bt")
+            desiredWidth = btStatusMenuWidth;
         statusMenuWidth = desiredWidth;
         if (chipX !== undefined) {
             const leftX = Math.max(0, Number(chipX) || 0);
@@ -432,7 +487,7 @@ PanelWindow {
             Row {
                 spacing: 5
                 Repeater {
-                    model: root.activeWorkspaceIds
+                    model: root.filteredWorkspaceIds
                     delegate: Rectangle {
                         required property var modelData
                         readonly property int wsId: Number(modelData)
@@ -475,7 +530,7 @@ PanelWindow {
                 implicitHeight: 30
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
-                border.color: root.config.barAccentColor
+                border.color: "transparent"
                 radius: root.config.barRounding
 
 
@@ -493,10 +548,10 @@ PanelWindow {
 
         RowLayout {
             id: rightStatusRow
-            spacing: 10
+            spacing: 4
             Rectangle {
                 id: capsChip
-                visible: root.capsLockOn
+                visible: root.capsLockOn && root._barOverlayEnabled("locks", true)
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
                 border.color: root.config.accentColor
@@ -521,7 +576,7 @@ PanelWindow {
             }
             Rectangle {
                 id: numChip
-                visible: root.numLockOn
+                visible: root.numLockOn && root._barOverlayEnabled("locks", true)
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
                 border.color: root.config.accentColor
@@ -545,6 +600,7 @@ PanelWindow {
                 }
             }
             Label {
+                visible: root._barOverlayEnabled("clock", true)
                 text: root.dateTimeText
                 color: root.config.textColor
                 font.family: root.uiFontFamily
@@ -552,15 +608,17 @@ PanelWindow {
                 Layout.alignment: Qt.AlignVCenter
             }
             Item {
-                Layout.preferredWidth: 18
-                Layout.minimumWidth: 18
+                visible: root._barOverlayEnabled("clock", true)
+                Layout.preferredWidth: 6
+                Layout.minimumWidth: 6
                 Layout.fillWidth: false
             }
             Rectangle {
                 id: wifiChip
+                visible: root._barOverlayEnabled("wifi", true)
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
-                border.color: root.config.mutedTextColor
+                border.color: root.config.barAccentColor
                 radius: root.config.rounding
                 implicitWidth: wifiLabel.implicitWidth + 10
                 implicitHeight: 22
@@ -576,6 +634,7 @@ PanelWindow {
             }
             Rectangle {
                 id: btChip
+                visible: root._barOverlayEnabled("bluetooth", true)
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
                 border.color: root.config.barAccentColor
@@ -594,6 +653,7 @@ PanelWindow {
             }
             Rectangle {
                 id: audioChip
+                visible: root._barOverlayEnabled("audio", true)
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
                 border.color: root.config.barAccentColor
@@ -625,6 +685,7 @@ PanelWindow {
             }
             Rectangle {
                 id: batChip
+                visible: root._barOverlayEnabled("battery", true)
                 color: "transparent"
                 border.width: root.config.buttonBorderWidth
                 border.color: root.config.barAccentColor
@@ -670,78 +731,59 @@ PanelWindow {
 
     PanelWindow {
         id: workspacePreviewWindow
-        property bool shown: root.workspacePreviewId > 0
-        visible: shown || workspacePreviewPanel.opacity > 0.01
+        property bool shown: root.workspacePreviewShown
+        property bool mounted: shown
+        property bool presented: shown
+        visible: workspacePreviewWindow.mounted
+        onShownChanged: {
+            if (shown) {
+                mounted = true;
+                presented = false;
+                workspacePreviewHideTimer.stop();
+                workspacePreviewPresentTimer.restart();
+            } else if (mounted) {
+                presented = false;
+                workspacePreviewHideTimer.restart();
+            }
+        }
         anchors {
             top: true
             left: true
         }
         margins {
-            top: root.implicitHeight
-            left: root.workspacePreviewLeftX
+            top: 0
+            left: Math.max(
+                0,
+                Math.min(
+                    Math.max(0, root.width - workspacePreviewWindow.implicitWidth),
+                    root.workspacePreviewAnchorCenterX - (workspacePreviewWindow.implicitWidth / 2)
+                )
+            )
         }
-        implicitWidth: 280
-        implicitHeight: workspacePreviewContent.implicitHeight + 16
+        implicitWidth: workspacePreviewPanel.implicitWidth
+        implicitHeight: workspacePreviewPanel.implicitHeight
         exclusiveZone: 0
         color: "transparent"
 
-        Rectangle {
+        WorkspacePreviewSurface {
             id: workspacePreviewPanel
-            anchors.fill: parent
-            y: workspacePreviewWindow.shown ? 0 : -12
-            opacity: workspacePreviewWindow.shown ? 1 : 0
-            color: root.config.overlayBackgroundColor
-            border.color: root.config.overlayAccentColor
-            border.width: root.config.overlayBorderWidth
-            radius: root.config.overlayRounding
+            readonly property real hiddenY: -(workspacePreviewWindow.implicitHeight + 8)
+            width: parent.width
+            height: parent.height
+            visible: workspacePreviewWindow.mounted
+            y: workspacePreviewWindow.presented ? 0 : hiddenY
+            host: root
+            workspaceId: root.workspacePreviewDisplayId
+            items: root.workspacePreviewItems
+            previewMonitor: root._workspacePreviewMonitor(root.workspacePreviewDisplayId)
 
             Behavior on y {
-                NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
-            }
-            Behavior on opacity {
-                NumberAnimation { duration: 90 }
-            }
-        }
-
-        Column {
-            id: workspacePreviewContent
-            anchors.fill: parent
-            anchors.margins: 8
-            spacing: 6
-
-            Label {
-                text: "Workspace " + root.workspacePreviewId
-                color: root.config.overlayTextColor
-                font.family: root.uiFontFamily
-                font.pixelSize: root.uiFontSize
-                font.bold: true
-            }
-
-            Label {
-                visible: root.workspacePreviewItems.length < 1
-                text: "Empty workspace"
-                color: root.config.mutedTextColor
-                font.family: root.uiFontFamily
-                font.pixelSize: root.uiFontSize
-            }
-
-            Repeater {
-                model: root.workspacePreviewItems
-                delegate: Label {
-                    required property var modelData
-                    width: workspacePreviewWindow.implicitWidth - 16
-                    text: "\u2022 " + root._workspacePreviewTitle(modelData)
-                    color: root.config.textColor
-                    wrapMode: Text.Wrap
-                    maximumLineCount: 2
-                    elide: Text.ElideRight
-                    font.family: root.uiFontFamily
-                    font.pixelSize: root.uiFontSize
-                }
+                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
             }
         }
 
         HoverHandler {
+            enabled: workspacePreviewWindow.mounted
             onHoveredChanged: {
                 root.workspacePreviewHovered = hovered;
                 if (hovered)
@@ -750,12 +792,47 @@ PanelWindow {
                     workspacePreviewCloseTimer.restart();
             }
         }
+
+        Timer {
+            id: workspacePreviewPresentTimer
+            interval: 16
+            repeat: false
+            onTriggered: {
+                if (workspacePreviewWindow.shown)
+                    workspacePreviewWindow.presented = true;
+            }
+        }
+
+        Timer {
+            id: workspacePreviewHideTimer
+            interval: 170
+            repeat: false
+            onTriggered: {
+                if (!workspacePreviewWindow.shown) {
+                    workspacePreviewWindow.presented = false;
+                    workspacePreviewWindow.mounted = false;
+                }
+            }
+        }
     }
 
     PanelWindow {
         id: statusMenuWindow
         property bool shown: root.activeStatusMenu.length > 0
-        visible: shown || statusPanel.opacity > 0.01
+        property bool mounted: shown
+        property bool presented: shown
+        visible: true
+        onShownChanged: {
+            if (shown) {
+                mounted = true;
+                presented = false;
+                statusMenuHideTimer.stop();
+                statusMenuPresentTimer.restart();
+            } else if (mounted) {
+                presented = false;
+                statusMenuHideTimer.restart();
+            }
+        }
         focusable: root.activeStatusMenu === "wifi"
         WlrLayershell.keyboardFocus: root.activeStatusMenu === "wifi" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         anchors {
@@ -773,20 +850,18 @@ PanelWindow {
 
         Rectangle {
             id: statusPanel
-            anchors.fill: parent
-            y: statusMenuWindow.shown ? 0 : -(statusMenuWindow.implicitHeight + 8)
+            readonly property real hiddenY: -(statusMenuWindow.implicitHeight + 8)
+            width: parent.width
+            height: parent.height
+            y: statusMenuWindow.presented ? 0 : hiddenY
             color: root.config.overlayBackgroundColor
             border.color: root.config.borderColor
             border.width: root.config.overlayBorderWidth
             radius: root.config.overlayRounding
-            opacity: statusMenuWindow.shown ? 1 : 0
 
             Behavior on y {
                 id: statusSlideAnim
                 NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
-            }
-            Behavior on opacity {
-                NumberAnimation { duration: 120 }
             }
 
             Rectangle {
@@ -851,11 +926,34 @@ PanelWindow {
         }
 
         HoverHandler {
+            enabled: statusMenuWindow.mounted
             onHoveredChanged: {
                 if (hovered)
                     statusPopupCloseTimer.stop();
                 else
                     statusPopupCloseTimer.restart();
+            }
+        }
+
+        Timer {
+            id: statusMenuPresentTimer
+            interval: 0
+            repeat: false
+            onTriggered: {
+                if (statusMenuWindow.shown)
+                    statusMenuWindow.presented = true;
+            }
+        }
+
+        Timer {
+            id: statusMenuHideTimer
+            interval: 170
+            repeat: false
+            onTriggered: {
+                if (!statusMenuWindow.shown) {
+                    statusMenuWindow.presented = false;
+                    statusMenuWindow.mounted = false;
+                }
             }
         }
     }
@@ -885,7 +983,7 @@ PanelWindow {
         repeat: false
         onTriggered: {
             if (!root.workspacePreviewHovered)
-                root.workspacePreviewId = 0;
+                root.workspacePreviewShown = false;
         }
     }
 

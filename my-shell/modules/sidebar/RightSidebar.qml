@@ -17,15 +17,18 @@ PanelWindow {
     }
 
     color: "transparent"
-    implicitWidth: sidebarActive ? (panel.implicitWidth + 6) : Math.max(1, root.config.sidebarEdgeThresholdPx)
+    readonly property real sidebarHiddenOffset: panel.implicitWidth + 8
+    property bool sidebarWindowActive: sidebarActive
+    implicitWidth: sidebarWindowActive ? (panel.implicitWidth + 8) : Math.max(1, root.config.sidebarEdgeThresholdPx)
     exclusiveZone: 0
 
     readonly property bool sidebarActive: root.shell.rightSidebarVisible || root.shell.rightSidebarTriggerHovered || root.shell.rightSidebarOverlayHovered
-    property int targetOffset: sidebarActive ? 0 : panel.implicitWidth + 6
+    property int targetOffset: sidebarActive ? 0 : sidebarHiddenOffset
     property int volumeValue: 50
     property bool volumeMuted: false
     property int brightnessValue: 40
     property bool suppressEdgeTrigger: false
+    readonly property int triggerZoneHeight: Math.min(root.height, Math.max(180, Math.min(320, panel.implicitHeight)))
     readonly property string uiFontFamily: root.config.fontFamily
     readonly property int uiFontSize: root.config.fontPixelSize
 
@@ -77,13 +80,21 @@ PanelWindow {
 
     onUiFontFamilyChanged: _applyFontRecursive(root)
     onUiFontSizeChanged: _applyFontRecursive(root)
+    onSidebarActiveChanged: {
+        if (sidebarActive) {
+            sidebarWindowActive = true;
+            sidebarHideTimer.stop();
+        } else if (sidebarWindowActive) {
+            sidebarHideTimer.restart();
+        }
+    }
     Component.onCompleted: {
         _applyFontRecursive(root);
         suppressEdgeTrigger = true;
         startupEdgeGuard.start();
     }
 
-    readonly property int _cardHeight: Math.max(68, Math.min(200, root.config.sidebarSliderHeight))
+    readonly property int _cardHeight: Math.max(70, Math.min(200, root.config.sidebarSliderHeight))
 
     Rectangle {
         id: panel
@@ -102,7 +113,7 @@ PanelWindow {
 
         Behavior on x {
             NumberAnimation {
-                duration: 180
+                duration: 160
                 easing.type: Easing.OutCubic
             }
         }
@@ -246,7 +257,12 @@ PanelWindow {
     }
 
     MouseArea {
-        anchors.fill: parent
+        anchors {
+            right: parent.right
+            verticalCenter: parent.verticalCenter
+        }
+        width: parent.width
+        height: root.triggerZoneHeight
         hoverEnabled: true
         acceptedButtons: Qt.NoButton
         onEntered: {
@@ -263,6 +279,16 @@ PanelWindow {
         }
         onPositionChanged: {
             // Intentionally left empty: enter/exit timers drive trigger behavior.
+        }
+    }
+
+    Timer {
+        id: sidebarHideTimer
+        interval: 170
+        repeat: false
+        onTriggered: {
+            if (!root.sidebarActive)
+                root.sidebarWindowActive = false;
         }
     }
 

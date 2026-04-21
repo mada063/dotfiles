@@ -3,6 +3,7 @@ import QtCore
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import Quickshell.Services.Notifications
 import Quickshell.Wayland
 
 import "modules/bar" as Bar
@@ -16,12 +17,15 @@ ShellRoot {
     property bool controlCenterVisible: false
     property bool dashboardVisible: false
     property bool themeSelectorVisible: false
-    property bool quickSettingsVisible: false
+    property bool wallpaperPickerVisible: false
+    property bool quickSettingsTriggerHovered: false
+    property bool quickSettingsOverlayHovered: false
     property bool dashboardTriggerHovered: false
     property bool dashboardOverlayHovered: false
     property bool rightSidebarVisible: false
     property bool rightSidebarTriggerHovered: false
     property bool rightSidebarOverlayHovered: false
+    readonly property bool quickSettingsOpen: quickSettingsTriggerHovered || quickSettingsOverlayHovered
     property string detectedWindowManagerKey: "unknown"
     property string detectedWindowManagerName: "Window Manager"
 
@@ -52,11 +56,45 @@ ShellRoot {
         dashboardOverlayHovered = false;
     }
 
+    function dismissQuickSettings() {
+        quickSettingsTriggerRelease.stop();
+        quickSettingsOverlayRelease.stop();
+        quickSettingsTriggerHovered = false;
+        quickSettingsOverlayHovered = false;
+    }
+
+    function holdQuickSettingsTrigger() {
+        quickSettingsTriggerRelease.stop();
+        quickSettingsTriggerHovered = true;
+    }
+
+    function holdQuickSettingsOverlay() {
+        quickSettingsTriggerRelease.stop();
+        quickSettingsOverlayRelease.stop();
+        quickSettingsOverlayHovered = true;
+    }
+
+    function cancelQuickSettingsTriggerClose() {
+        quickSettingsTriggerRelease.stop();
+    }
+
+    function scheduleQuickSettingsTriggerClose() {
+        quickSettingsTriggerRelease.restart();
+    }
+
+    function cancelQuickSettingsOverlayClose() {
+        quickSettingsOverlayRelease.stop();
+    }
+
+    function scheduleQuickSettingsOverlayClose() {
+        quickSettingsOverlayRelease.restart();
+    }
+
     function toggleControlCenter() {
         if (!controlCenterVisible) {
             closeDashboardOverlays();
             themeSelectorVisible = false;
-            quickSettingsVisible = false;
+            dismissQuickSettings();
         }
         controlCenterVisible = !controlCenterVisible;
     }
@@ -64,15 +102,56 @@ ShellRoot {
     function openControlCenter() {
         closeDashboardOverlays();
         themeSelectorVisible = false;
-        quickSettingsVisible = false;
+        dismissQuickSettings();
         controlCenterVisible = true;
     }
 
     function openThemeSelector() {
         closeDashboardOverlays();
         controlCenterVisible = false;
-        quickSettingsVisible = false;
+        dismissQuickSettings();
         themeSelectorVisible = true;
+    }
+
+    function openWallpaperPicker() {
+        closeDashboardOverlays();
+        controlCenterVisible = false;
+        dismissQuickSettings();
+        wallpaperPickerVisible = true;
+    }
+
+    function setWallpaper(path) {
+        const p = String(path || "").trim();
+        if (!p.length)
+            return;
+        store.wallpaperPath = p;
+        root.applyWallpaper(p);
+        root.queueStoreSave();
+    }
+
+    function clearNotificationHistory() {
+        notificationHistory = [];
+    }
+
+    function dismissNotification(index) {
+        const h = root.notificationHistory.slice();
+        if (index >= 0 && index < h.length)
+            h.splice(index, 1);
+        root.notificationHistory = h;
+    }
+
+    function setQuickSettingsTileVisible(tileId, visible) {
+        const tiles = config.quickSettingsTiles || [];
+        const updated = tiles.map(function(t) {
+            return String(t.id) === String(tileId) ? Object.assign({}, t, { visible: visible }) : t;
+        });
+        config.quickSettingsTiles = root._deepCopy(updated);
+    }
+
+    function setBarOverlayVisible(overlayId, visible) {
+        const next = Object.assign({}, config.barOverlayVisibility || root.defaultBarOverlayVisibility());
+        next[String(overlayId)] = !!visible;
+        config.barOverlayVisibility = root._deepCopy(next);
     }
 
     function toggleDashboard() {
@@ -94,6 +173,20 @@ ShellRoot {
         onTriggered: root.dashboardTriggerHovered = false
     }
 
+    Timer {
+        id: quickSettingsTriggerRelease
+        interval: config.hoverReleaseMs
+        repeat: false
+        onTriggered: root.quickSettingsTriggerHovered = false
+    }
+
+    Timer {
+        id: quickSettingsOverlayRelease
+        interval: config.hoverReleaseMs
+        repeat: false
+        onTriggered: root.quickSettingsOverlayHovered = false
+    }
+
     Process {
         id: windowManagerDetectProc
         command: ["bash", "-lc", "if [ -n \"${HYPRLAND_INSTANCE_SIGNATURE:-}\" ]; then echo hyprland; elif [ -n \"${SWAYSOCK:-}\" ]; then echo sway; elif [ -n \"${I3SOCK:-}\" ]; then echo i3; elif [ -n \"${XDG_CURRENT_DESKTOP:-}\" ]; then printf '%s' \"$XDG_CURRENT_DESKTOP\" | tr '[:upper:]' '[:lower:]' | cut -d: -f1; elif [ -n \"${DESKTOP_SESSION:-}\" ]; then printf '%s' \"$DESKTOP_SESSION\" | tr '[:upper:]' '[:lower:]'; else echo unknown; fi"]
@@ -109,6 +202,28 @@ ShellRoot {
 
     function defaultThemeLibrary() {
         return [];
+    }
+
+    function defaultQuickSettingsTiles() {
+        return [
+            { id: "wifi",      visible: true },
+            { id: "bluetooth", visible: true },
+            { id: "dnd",       visible: true },
+            { id: "wallpaper", visible: true },
+            { id: "themes",    visible: true },
+            { id: "settings",  visible: true }
+        ];
+    }
+
+    function defaultBarOverlayVisibility() {
+        return {
+            clock: true,
+            locks: true,
+            wifi: true,
+            bluetooth: true,
+            audio: true,
+            battery: true
+        };
     }
 
     function applyBundledThemeLibrary(rawText) {
@@ -358,6 +473,11 @@ ShellRoot {
         config.panelOpacity = Math.max(0.55, Math.min(1, next.panelOpacity));
         config.overlayDimOpacity = Math.max(0, Math.min(0.9, next.overlayDimOpacity));
         root.applyWallpaper(next.wallpaperPath);
+        if (root.detectedWindowManagerKey === "hyprland") {
+            let deco = Object.assign({}, config.hyprlandDecoration || root.defaultHyprlandDecoration());
+            deco.activeBorderColor = next.accentColor;
+            config.hyprlandDecoration = deco;
+        }
         root.queueStoreSave();
     }
 
@@ -559,6 +679,7 @@ ShellRoot {
         property string fontFamily: "JetBrainsMono Nerd Font"
         property int fontPixelSize: 12
         property bool sidebarEnabled: true
+        property var barOverlayVisibility: root.defaultBarOverlayVisibility()
         property int sidebarEdgeHoldMs: 550
         property int sidebarEdgeThresholdPx: 2
         property int hoverReleaseMs: 220
@@ -584,6 +705,7 @@ ShellRoot {
         property var hyprlandDecoration: root.defaultHyprlandDecoration()
         property var hyprlandBinds: root.defaultHyprlandBinds()
         property var hyprlandWorkspaceRules: root.defaultHyprlandWorkspaceRules()
+        property var quickSettingsTiles: root.defaultQuickSettingsTiles()
     }
 
     function saveStore() {
@@ -635,6 +757,7 @@ ShellRoot {
             fontFamily: store.fontFamily,
             fontPixelSize: store.fontPixelSize,
             sidebarEnabled: store.sidebarEnabled,
+            barOverlayVisibility: store.barOverlayVisibility,
             sidebarEdgeHoldMs: store.sidebarEdgeHoldMs,
             sidebarEdgeThresholdPx: store.sidebarEdgeThresholdPx,
             hoverReleaseMs: store.hoverReleaseMs,
@@ -659,7 +782,8 @@ ShellRoot {
             hyprlandMonitors: store.hyprlandMonitors,
             hyprlandDecoration: store.hyprlandDecoration,
             hyprlandBinds: store.hyprlandBinds,
-            hyprlandWorkspaceRules: store.hyprlandWorkspaceRules
+            hyprlandWorkspaceRules: store.hyprlandWorkspaceRules,
+            quickSettingsTiles: store.quickSettingsTiles
         };
         settingsFile.setText(JSON.stringify(payload, null, 2));
     }
@@ -803,6 +927,8 @@ ShellRoot {
                     store.fontPixelSize = cfg.fontPixelSize;
                 if (cfg.sidebarEnabled !== undefined)
                     store.sidebarEnabled = cfg.sidebarEnabled;
+                if (cfg.barOverlayVisibility !== undefined && typeof cfg.barOverlayVisibility === "object")
+                    store.barOverlayVisibility = cfg.barOverlayVisibility;
                 if (cfg.sidebarEdgeHoldMs !== undefined)
                     store.sidebarEdgeHoldMs = cfg.sidebarEdgeHoldMs;
                 if (cfg.sidebarEdgeThresholdPx !== undefined)
@@ -859,6 +985,8 @@ ShellRoot {
                     store.hyprlandBinds = cfg.hyprlandBinds;
                 if (cfg.hyprlandWorkspaceRules !== undefined && Array.isArray(cfg.hyprlandWorkspaceRules) && cfg.hyprlandWorkspaceRules.length > 0)
                     store.hyprlandWorkspaceRules = cfg.hyprlandWorkspaceRules;
+                if (cfg.quickSettingsTiles !== undefined && Array.isArray(cfg.quickSettingsTiles) && cfg.quickSettingsTiles.length > 0)
+                    store.quickSettingsTiles = cfg.quickSettingsTiles;
                 config.hyprlandMonitors = root._deepCopy(store.hyprlandMonitors || []);
                 config.hyprlandDecoration = root._deepCopy(store.hyprlandDecoration || {});
                 config.hyprlandBinds = root._deepCopy(store.hyprlandBinds || []);
@@ -930,6 +1058,7 @@ ShellRoot {
             : (themeMode === "light" ? "#52525b" : "#a1a1aa")
         readonly property string wallpaperPath: store.wallpaperPath
         property bool sidebarEnabled: store.sidebarEnabled
+        property var barOverlayVisibility: root._deepCopy(store.barOverlayVisibility || root.defaultBarOverlayVisibility())
         property int sidebarEdgeHoldMs: store.sidebarEdgeHoldMs
         property int sidebarEdgeThresholdPx: store.sidebarEdgeThresholdPx
         property int hoverReleaseMs: store.hoverReleaseMs
@@ -955,6 +1084,7 @@ ShellRoot {
         property var hyprlandDecoration: ({})
         property var hyprlandBinds: []
         property var hyprlandWorkspaceRules: []
+        property var quickSettingsTiles: root.defaultQuickSettingsTiles()
 
         onBarOrientationChanged: { store.barOrientation = barOrientation; root.queueStoreSave(); }
         onThemeModeChanged: { store.themeMode = themeMode; root.queueStoreSave(); }
@@ -1001,6 +1131,7 @@ ShellRoot {
         onFontFamilyChanged: { store.fontFamily = fontFamily; root.queueStoreSave(); }
         onFontPixelSizeChanged: { store.fontPixelSize = fontPixelSize; root.queueStoreSave(); }
         onSidebarEnabledChanged: { store.sidebarEnabled = sidebarEnabled; root.queueStoreSave(); }
+        onBarOverlayVisibilityChanged: { store.barOverlayVisibility = root._deepCopy(barOverlayVisibility || root.defaultBarOverlayVisibility()); root.queueStoreSave(); }
         onSidebarEdgeHoldMsChanged: { store.sidebarEdgeHoldMs = sidebarEdgeHoldMs; root.queueStoreSave(); }
         onSidebarEdgeThresholdPxChanged: { store.sidebarEdgeThresholdPx = sidebarEdgeThresholdPx; root.queueStoreSave(); }
         onHoverReleaseMsChanged: { store.hoverReleaseMs = hoverReleaseMs; root.queueStoreSave(); }
@@ -1026,6 +1157,7 @@ ShellRoot {
         onHyprlandDecorationChanged: { store.hyprlandDecoration = root._deepCopy(hyprlandDecoration || {}); root.queueStoreSave(); root.queueHyprlandSync(); }
         onHyprlandBindsChanged: { store.hyprlandBinds = root._deepCopy(hyprlandBinds || []); root.queueStoreSave(); root.queueHyprlandSync(); }
         onHyprlandWorkspaceRulesChanged: { store.hyprlandWorkspaceRules = root._deepCopy(hyprlandWorkspaceRules || []); root.queueStoreSave(); root.queueHyprlandSync(); }
+        onQuickSettingsTilesChanged: { store.quickSettingsTiles = root._deepCopy(quickSettingsTiles || []); root.queueStoreSave(); }
 
         Component.onCompleted: {
             if (store.barOrientation !== "top" && store.barOrientation !== "left") {
@@ -1040,6 +1172,7 @@ ShellRoot {
             hyprlandDecoration = root._deepCopy(store.hyprlandDecoration || {});
             hyprlandBinds = root._deepCopy(store.hyprlandBinds || []);
             hyprlandWorkspaceRules = root._deepCopy(store.hyprlandWorkspaceRules || []);
+            quickSettingsTiles = root._deepCopy(store.quickSettingsTiles || root.defaultQuickSettingsTiles());
         }
     }
 
@@ -1094,6 +1227,28 @@ ShellRoot {
         }
     }
 
+    property var notificationHistory: []
+
+    NotificationServer {
+        id: notifServer
+        keepOnReload: true
+        onNotification: function(n) {
+            const app = String(n.appName || "");
+            const summary = String(n.summary || "");
+            const body = String(n.body || "");
+
+            const entry = {
+                appName: app,
+                summary: summary,
+                body:    body,
+                urgency: Number(n.urgency || 1),
+                appIcon: String(n.appIcon || "")
+            };
+            const h = [entry].concat(root.notificationHistory.slice(0, 49));
+            root.notificationHistory = h;
+        }
+    }
+
     Bar.BarRoot {
         shell: root
         config: config
@@ -1143,7 +1298,6 @@ ShellRoot {
     ControlCenter.ControlCenter {
         shell: root
         config: config
-        visible: root.controlCenterVisible
     }
 
     Dashboard.ThemeSelectorScreen {
@@ -1152,19 +1306,34 @@ ShellRoot {
         availableThemes: config.themeLibrary || []
         uiFontFamily: config.fontFamily
         uiFontSize: config.fontPixelSize
-        visible: root.themeSelectorVisible
+    }
+
+    Dashboard.WallpaperPickerScreen {
+        shell: root
+        config: config
     }
 
     Sidebar.QuickSettings {
+        id: quickSettingsOverlay
         shell: root
         config: config
+        notifications: root.notificationHistory
         visible: true
+    }
+
+    Sidebar.NotificationOverlay {
+        config: config
+        notifications: root.notificationHistory
+        suppressPopup: quickSettingsOverlay.overlayOpen && quickSettingsOverlay.notifExpanded
+        quickSettingsOpen: root.quickSettingsOpen
+        quickSettingsHeight: quickSettingsOverlay.panelHeightEstimate
+        quickSettingsTriggerHeight: quickSettingsOverlay.triggerH
+        overlayWidth: Math.max(280, quickSettingsOverlay.menuW - 10)
     }
 
     Dashboard.Dashboard {
         shell: root
         config: config
-        visible: (root.dashboardVisible || root.dashboardTriggerHovered || root.dashboardOverlayHovered) && config.dashboardEnabled
     }
 
     Sidebar.RightSidebar {

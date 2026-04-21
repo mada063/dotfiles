@@ -208,5 +208,6 @@ if [ -f "$main_path" ]; then
 fi
 
 if command -v hyprctl >/dev/null 2>&1; then
-    hyprctl reload >/dev/null 2>&1 || true
+    # Prefer sourcing the generated fragment to avoid Hyprland's full reload banner.
+    hyprctl keyword source "$managed_path" >/dev/null 2>&1 || hyprctl reload >/dev/null 2>&1 || true
 fi

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 
 PanelWindow {
     id: root
@@ -11,6 +12,13 @@ PanelWindow {
     required property var availableThemes
     required property string uiFontFamily
     required property int uiFontSize
+    readonly property bool shown: root.shell.themeSelectorVisible
+
+    visible: root.shown || overlayDimmer.opacity > 0.01 || selectorPanel.opacity > 0.01
+    focusable: root.shown
+    WlrLayershell.keyboardFocus: root.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     function _themeTextColor(theme) {
         return String((theme.general && theme.general.textColor) || theme.textColor || "#e5e7eb");
@@ -43,8 +51,14 @@ PanelWindow {
     color: "#00000000"
 
     Rectangle {
+        id: overlayDimmer
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, root.config.overlayDimOpacity)
+        opacity: root.shown ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: 120 }
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -53,14 +67,25 @@ PanelWindow {
     }
 
     Rectangle {
+        id: selectorPanel
+        property real offsetY: root.shown ? 0 : -24
         width: Math.min(parent.width - 48, 300)
         height: Math.min(parent.height - 48, 150)
         anchors.centerIn: parent
+        anchors.verticalCenterOffset: offsetY
         color: root.config.settingsBackgroundColor
         border.color: root.config.settingsAccentColor
         border.width: root.config.overlayBorderWidth
         radius: root.config.settingsRounding
-        opacity: root.config.panelOpacity
+        z: 1
+        opacity: root.shown ? root.config.panelOpacity : 0
+        Behavior on offsetY {
+            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+        }
+
+        Behavior on opacity {
+            NumberAnimation { duration: 120 }
+        }
 
         ColumnLayout {
             anchors.fill: parent

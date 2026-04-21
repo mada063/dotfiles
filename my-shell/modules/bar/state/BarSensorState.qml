@@ -42,6 +42,8 @@ Item {
     property var btDevices: []
     property var activeWorkspaceIds: [1]
     property int focusedWorkspaceId: 1
+    property var workspaceInfos: []
+    property var workspaceMonitors: []
     property var workspaceClients: []
 
     function _shellQuoteSingle(value) {
@@ -101,21 +103,55 @@ Item {
     }
 
     Process { id: wsListProc
-        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then hyprctl workspaces -j | jq -r 'map(.id) | unique | sort | join(\" \")'; else echo '1'; fi"]
+        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl workspaces -j; else echo '[]'; fi"]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: {
-                const ids = String(text).trim().split(/\s+/).filter(Boolean).map(Number).filter(n => n > 0);
-                root.activeWorkspaceIds = ids.length > 0 ? ids : [1];
+                try {
+                    const parsed = JSON.parse(String(text).trim() || "[]");
+                    const infoMap = {};
+                    if (Array.isArray(parsed)) {
+                        for (let i = 0; i < parsed.length; i++) {
+                            const workspace = parsed[i] || {};
+                            const workspaceId = Number(workspace.id) || 0;
+                            if (workspaceId < 1)
+                                continue;
+                            infoMap[workspaceId] = {
+                                id: workspaceId,
+                                name: String(workspace.name || "").trim(),
+                                monitorName: String(workspace.monitor || "").trim(),
+                                monitorId: Number(workspace.monitorID) || 0,
+                                hasFullscreen: Boolean(workspace.hasfullscreen),
+                                windows: Number(workspace.windows) || 0
+                            };
+                        }
+                    }
+                    let infos = [];
+                    for (const workspaceKey in infoMap)
+                        infos.push(infoMap[workspaceKey]);
+                    infos.sort((a, b) => a.id - b.id);
+                    root.workspaceInfos = infos;
+                    root.activeWorkspaceIds = infos.length > 0 ? infos.map(info => info.id) : [1];
+                } catch (e) {
+                    root.workspaceInfos = [];
+                    root.activeWorkspaceIds = [1];
+                }
             }
         }
     }
 
     Process { id: wsFocusedProc
-        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then hyprctl activeworkspace -j | jq -r '.id // 1'; else echo '1'; fi"]
+        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl activeworkspace -j; else echo '{}'; fi"]
         stdout: StdioCollector {
             waitForEnd: true
-            onStreamFinished: root.focusedWorkspaceId = Number(String(text).trim()) || 1
+            onStreamFinished: {
+                try {
+                    const parsed = JSON.parse(String(text).trim() || "{}");
+                    root.focusedWorkspaceId = Number(parsed.id) || 1;
+                } catch (e) {
+                    root.focusedWorkspaceId = 1;
+                }
+            }
         }
     }
 
@@ -135,11 +171,41 @@ Item {
                             address: String(client.address || "").trim(),
                             floating: Boolean(client.floating),
                             fullscreen: Boolean(client.fullscreen),
-                            monitor: Number(client.monitor) || 0
+                            monitor: Number(client.monitor) || 0,
+                            x: Array.isArray(client.at) ? (Number(client.at[0]) || 0) : 0,
+                            y: Array.isArray(client.at) ? (Number(client.at[1]) || 0) : 0,
+                            width: Array.isArray(client.size) ? Math.max(1, Number(client.size[0]) || 0) : 1,
+                            height: Array.isArray(client.size) ? Math.max(1, Number(client.size[1]) || 0) : 1
                         })).filter(client => client.workspaceId > 0)
                         : [];
                 } catch (e) {
                     root.workspaceClients = [];
+                }
+            }
+        }
+    }
+
+    Process { id: wsMonitorsProc
+        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl monitors -j; else echo '[]'; fi"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: {
+                try {
+                    const parsed = JSON.parse(String(text).trim() || "[]");
+                    root.workspaceMonitors = Array.isArray(parsed)
+                        ? parsed.map(monitor => ({
+                            id: Number(monitor.id) || 0,
+                            name: String(monitor.name || "").trim(),
+                            x: Number(monitor.x) || 0,
+                            y: Number(monitor.y) || 0,
+                            width: Math.max(1, Number(monitor.width) || 0),
+                            height: Math.max(1, Number(monitor.height) || 0),
+                            scale: Math.max(0.25, Number(monitor.scale) || 1),
+                            activeWorkspaceId: Number(monitor.activeWorkspace && monitor.activeWorkspace.id) || 0
+                        }))
+                        : [];
+                } catch (e) {
+                    root.workspaceMonitors = [];
                 }
             }
         }
@@ -414,6 +480,7 @@ Item {
             wsListProc.exec({ command: wsListProc.command });
             wsFocusedProc.exec({ command: wsFocusedProc.command });
             wsClientsProc.exec({ command: wsClientsProc.command });
+            wsMonitorsProc.exec({ command: wsMonitorsProc.command });
         }
     }
 

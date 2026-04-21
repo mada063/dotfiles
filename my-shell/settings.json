@@ -46,11 +46,19 @@
   "fontFamily": "JetBrainsMono Nerd Font",
   "fontPixelSize": 12,
   "sidebarEnabled": true,
-  "sidebarEdgeHoldMs": 200,
+  "barOverlayVisibility": {
+    "clock": true,
+    "locks": true,
+    "wifi": true,
+    "bluetooth": true,
+    "audio": true,
+    "battery": true
+  },
+  "sidebarEdgeHoldMs": 550,
   "sidebarEdgeThresholdPx": 2,
   "hoverReleaseMs": 220,
   "sidebarSliderHeight": 100,
-  "barWorkspacePollMs": 120,
+  "barWorkspacePollMs": 450,
   "barMediumPollMs": 700,
   "barSlowPollMs": 1800,
   "quickSidebarPollMs": 1500,
@@ -59,7 +67,7 @@
   "dashboardFastPollMs": 1200,
   "dashboardMediumPollMs": 2400,
   "dashboardSlowPollMs": 4800,
-  "showShellTitle": false,
+  "showShellTitle": true,
   "controlCenterEnableHotkey": true,
   "controlCenterHotkey": "Ctrl+Alt+C",
   "dashboardEnableHotkey": true,
@@ -67,44 +75,36 @@
   "sidebarEnableHotkey": true,
   "sidebarHotkey": "Ctrl+Alt+B",
   "hyprlandManagedEnabled": true,
-  "hyprlandMonitors": [
-    {
-      "name": "",
-      "mode": "preferred",
-      "positionX": 0,
-      "positionY": 0,
-      "scale": 1,
-      "transform": 0,
-      "mirrorOf": "",
-      "enabled": true
-    }
-  ],
+  "hyprlandMonitors": [],
   "hyprlandDecoration": {
-    "gapsIn": 5,
-    "gapsOut": 5,
-    "borderSize": 2,
-    "rounding": 0,
-    "blurEnabled": true,
-    "blurSize": 8,
-    "blurPasses": 1,
-    "activeBorderColor": "#ff8c32",
-    "inactiveBorderColor": "#444444"
+    "activeBorderColor": "#FF8C32"
   },
-  "hyprlandBinds": [
+  "hyprlandBinds": [],
+  "hyprlandWorkspaceRules": [],
+  "quickSettingsTiles": [
     {
-      "mods": "SUPER",
-      "key": "Return",
-      "dispatcher": "exec",
-      "argument": "foot"
-    }
-  ],
-  "hyprlandWorkspaceRules": [
+      "id": "wifi",
+      "visible": true
+    },
     {
-      "workspace": "1",
-      "monitor": "",
-      "defaultName": "",
-      "persistent": true,
-      "isDefault": true
+      "id": "bluetooth",
+      "visible": true
+    },
+    {
+      "id": "dnd",
+      "visible": true
+    },
+    {
+      "id": "wallpaper",
+      "visible": true
+    },
+    {
+      "id": "themes",
+      "visible": true
+    },
+    {
+      "id": "settings",
+      "visible": true
     }
   ]
 }
