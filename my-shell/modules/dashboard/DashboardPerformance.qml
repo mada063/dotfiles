@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "."
 
 Item {
     id: root
@@ -35,7 +36,7 @@ Item {
                         anchors.left: parent.left
                         width: parent.width * Math.max(0, Math.min(100, root.dashboard.cpuUsage)) / 100
                         radius: root.dashboard.config.rounding
-                        color: Qt.rgba(root.dashboard.dashboardAccent.r, root.dashboard.dashboardAccent.g, root.dashboard.dashboardAccent.b, 0.20)
+                        color: Qt.rgba(root.dashboard.config.dashboardPerformanceCpuBackgroundFillColor.r, root.dashboard.config.dashboardPerformanceCpuBackgroundFillColor.g, root.dashboard.config.dashboardPerformanceCpuBackgroundFillColor.b, 0.20)
                         Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     }
 
@@ -46,14 +47,14 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Label { text: "CPU"; color: root.dashboard.dashboardAccent; font.bold: true }
+                            Label { text: root.dashboard.config.formatUiText("CPU"); color: root.dashboard.config.dashboardCpuColor; font.bold: true }
                             Item { Layout.fillWidth: true }
-                            Label { text: root.dashboard.cpuUsage + "%"; color: root.dashboard.config.textColor; font.bold: true }
+                            Label { text: root.dashboard.cpuUsage + "%"; color: root.dashboard.config.dashboardCpuColor; font.bold: true }
                         }
 
                         Label {
                             text: root.dashboard.cpuName
-                            color: root.dashboard.config.textColor
+                            color: root.dashboard.config.dashboardTextColor
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -61,7 +62,7 @@ Item {
                         Item { Layout.fillHeight: true }
 
                         Label {
-                            text: "Temp " + root.dashboard.cpuTemp + " C"
+                            text: root.dashboard.config.formatUiText("Temp") + " " + root.dashboard.cpuTemp + " C"
                             color: root.dashboard.config.mutedTextColor
                         }
 
@@ -69,7 +70,7 @@ Item {
                             Layout.fillWidth: true
                             implicitHeight: 10
                             radius: Math.min(Math.max(0, root.dashboard.config.rounding), implicitHeight / 2)
-                            color: Qt.rgba(root.dashboard.config.textColor.r, root.dashboard.config.textColor.g, root.dashboard.config.textColor.b, 0.12)
+                            color: Qt.rgba(root.dashboard.config.dashboardUsageBarBackgroundColor.r, root.dashboard.config.dashboardUsageBarBackgroundColor.g, root.dashboard.config.dashboardUsageBarBackgroundColor.b, 0.16)
 
                             Rectangle {
                                 anchors.left: parent.left
@@ -77,7 +78,7 @@ Item {
                                 anchors.bottom: parent.bottom
                                 width: parent.width * Math.max(0, Math.min(100, root.dashboard.cpuTemp)) / 100
                                 radius: Math.min(Math.max(0, root.dashboard.config.rounding), parent.height / 2)
-                                color: root.dashboard.cpuTemp >= 80 ? "#ef4444" : root.dashboard.dashboardAccent
+                            color: root.dashboard.cpuTemp >= 80 ? "#ef4444" : root.dashboard.config.dashboardPerformanceCpuTempBarColor
                                 Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                             }
                         }
@@ -99,7 +100,7 @@ Item {
                         anchors.left: parent.left
                         width: parent.width * Math.max(0, Math.min(100, root.dashboard.gpuUsage)) / 100
                         radius: root.dashboard.config.rounding
-                        color: Qt.rgba(root.dashboard.dashboardAccent.r, root.dashboard.dashboardAccent.g, root.dashboard.dashboardAccent.b, 0.20)
+                        color: Qt.rgba(root.dashboard.config.dashboardPerformanceGpuBackgroundFillColor.r, root.dashboard.config.dashboardPerformanceGpuBackgroundFillColor.g, root.dashboard.config.dashboardPerformanceGpuBackgroundFillColor.b, 0.20)
                         Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     }
 
@@ -110,14 +111,14 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Label { text: "GPU"; color: root.dashboard.dashboardAccent; font.bold: true }
+                            Label { text: root.dashboard.config.formatUiText("GPU"); color: root.dashboard.config.dashboardGpuColor; font.bold: true }
                             Item { Layout.fillWidth: true }
-                            Label { text: root.dashboard.gpuUsage + "%"; color: root.dashboard.config.textColor; font.bold: true }
+                            Label { text: root.dashboard.gpuUsage + "%"; color: root.dashboard.config.dashboardGpuColor; font.bold: true }
                         }
 
                         Label {
                             text: root.dashboard.gpuName
-                            color: root.dashboard.config.textColor
+                            color: root.dashboard.config.dashboardTextColor
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -125,7 +126,7 @@ Item {
                         Item { Layout.fillHeight: true }
 
                         Label {
-                            text: "Temp " + root.dashboard.gpuTemp + " C"
+                            text: root.dashboard.config.formatUiText("Temp") + " " + root.dashboard.gpuTemp + " C"
                             color: root.dashboard.config.mutedTextColor
                         }
 
@@ -133,7 +134,7 @@ Item {
                             Layout.fillWidth: true
                             implicitHeight: 10
                             radius: Math.min(Math.max(0, root.dashboard.config.rounding), implicitHeight / 2)
-                            color: Qt.rgba(root.dashboard.config.textColor.r, root.dashboard.config.textColor.g, root.dashboard.config.textColor.b, 0.12)
+                            color: Qt.rgba(root.dashboard.config.dashboardUsageBarBackgroundColor.r, root.dashboard.config.dashboardUsageBarBackgroundColor.g, root.dashboard.config.dashboardUsageBarBackgroundColor.b, 0.16)
 
                             Rectangle {
                                 anchors.left: parent.left
@@ -141,7 +142,7 @@ Item {
                                 anchors.bottom: parent.bottom
                                 width: parent.width * Math.max(0, Math.min(100, root.dashboard.gpuTemp)) / 100
                                 radius: Math.min(Math.max(0, root.dashboard.config.rounding), parent.height / 2)
-                                color: root.dashboard.gpuTemp >= 80 ? "#ef4444" : root.dashboard.dashboardAccent
+                                color: root.dashboard.gpuTemp >= 80 ? "#ef4444" : root.dashboard.config.dashboardPerformanceGpuTempBarColor
                                 Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                             }
                         }
@@ -154,42 +155,40 @@ Item {
                 Layout.fillHeight: true
                 spacing: 8
 
-                Rectangle {
+                UpdatesBatteryBar {
                     Layout.preferredWidth: 180
                     Layout.fillHeight: true
-                    color: "transparent"
-                    border.color: root.dashboard.config.mutedTextColor
-                    border.width: root.dashboard.config.overlayBorderWidth
-                    radius: root.dashboard.config.rounding
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 8
-                        Label { text: "Memory"; color: root.dashboard.dashboardAccent; font.bold: true }
-                        Item { Layout.fillHeight: true }
-                        Label { property bool qsKeepPixelSize: true; text: root.dashboard.ramPercent + "%"; color: root.dashboard.config.textColor; font.pixelSize: root.dashboard.uiFontSize + 18; font.bold: true }
-                        Label { text: root.dashboard.ramUsedText + " / " + root.dashboard.ramTotalText; color: root.dashboard.config.mutedTextColor }
-                    }
+                    useSegmentSteps: false
+                    fillOpacity: 0.2
+                    segmentPercent: root.dashboard.ramPercent
+                    segmentColor: root.dashboard.config.dashboardPerformanceMemoryBarFillColor
+                    barTitle: root.dashboard.config.formatUiText("Memory")
+                    bigValue: root.dashboard.ramPercent + "%"
+                    smallLabel: root.dashboard.ramUsedText + " / " + root.dashboard.ramTotalText
+                    titleColor: root.dashboard.config.dashboardSystemAccentColor
+                    mutedTextColor: root.dashboard.config.mutedTextColor
+                    panelBorder: root.dashboard.dashboardAccent
+                    borderW: root.dashboard.config.overlayBorderWidth
+                    barRounding: root.dashboard.config.rounding
+                    valuePixelSize: root.dashboard.uiFontSize + 18
                 }
 
-                Rectangle {
+                UpdatesBatteryBar {
                     Layout.preferredWidth: 180
                     Layout.fillHeight: true
-                    color: "transparent"
-                    border.color: root.dashboard.config.mutedTextColor
-                    border.width: root.dashboard.config.overlayBorderWidth
-                    radius: root.dashboard.config.rounding
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 8
-                        Label { text: "Disk"; color: root.dashboard.dashboardAccent; font.bold: true }
-                        Item { Layout.fillHeight: true }
-                        Label { property bool qsKeepPixelSize: true; text: root.dashboard.diskPercent + "%"; color: root.dashboard.config.textColor; font.pixelSize: root.dashboard.uiFontSize + 18; font.bold: true }
-                        Label { text: root.dashboard.diskUsedText + " / " + root.dashboard.diskTotalText; color: root.dashboard.config.mutedTextColor }
-                    }
+                    useSegmentSteps: false
+                    fillOpacity: 0.2
+                    segmentPercent: root.dashboard.diskPercent
+                    segmentColor: root.dashboard.config.dashboardPerformanceDiskBarFillColor
+                    barTitle: root.dashboard.config.formatUiText("Disk")
+                    bigValue: root.dashboard.diskPercent + "%"
+                    smallLabel: root.dashboard.diskUsedText + " / " + root.dashboard.diskTotalText
+                    titleColor: root.dashboard.config.dashboardSystemAccentColor
+                    mutedTextColor: root.dashboard.config.mutedTextColor
+                    panelBorder: root.dashboard.dashboardAccent
+                    borderW: root.dashboard.config.overlayBorderWidth
+                    barRounding: root.dashboard.config.rounding
+                    valuePixelSize: root.dashboard.uiFontSize + 18
                 }
 
                 Rectangle {
@@ -205,14 +204,22 @@ Item {
                         anchors.margins: 12
                         spacing: 8
 
-                        Label { text: "Network"; color: root.dashboard.dashboardAccent; font.bold: true }
+                        Label { text: root.dashboard.config.formatUiText("Network"); color: root.dashboard.config.dashboardSystemAccentColor; font.bold: true }
+
+                        Connections {
+                            target: root.dashboard
+                            function onNetDownHistoryChanged() { networkCanvas.requestPaint() }
+                            function onNetUpHistoryChanged() { networkCanvas.requestPaint() }
+                        }
 
                         Canvas {
                             id: networkCanvas
                             Layout.fillWidth: true
                             Layout.fillHeight: true
+                            Layout.minimumHeight: 100
                             onWidthChanged: requestPaint()
                             onHeightChanged: requestPaint()
+                            onVisibleChanged: if (visible) requestPaint()
                             Component.onCompleted: requestPaint()
                             onPaint: {
                                 const ctx = getContext("2d");
@@ -256,14 +263,14 @@ Item {
                                     ctx.stroke();
                                 }
 
-                                drawSeries(down, root.dashboard.dashboardAccent);
-                                drawSeries(up, "#22c55e");
+                                drawSeries(down, root.dashboard.config.dashboardWifiDownColor);
+                                drawSeries(up, root.dashboard.config.dashboardWifiUpColor);
                             }
                         }
 
-                        Label { text: "Download " + root.dashboard.netDownText; color: root.dashboard.config.textColor }
-                        Label { text: "Upload " + root.dashboard.netUpText; color: root.dashboard.config.textColor }
-                        Label { text: "Total " + root.dashboard.netTotalText; color: root.dashboard.config.mutedTextColor }
+                        Label { text: root.dashboard.config.formatUiText("Download") + " " + root.dashboard.netDownText; color: root.dashboard.config.dashboardWifiDownColor }
+                        Label { text: root.dashboard.config.formatUiText("Upload") + " " + root.dashboard.netUpText; color: root.dashboard.config.dashboardWifiUpColor }
+                        Label { text: root.dashboard.config.formatUiText("Total") + " " + root.dashboard.netTotalText; color: root.dashboard.config.mutedTextColor }
                     }
                 }
             }
@@ -295,7 +302,7 @@ Item {
                         y: batterySegLayer.height - (index + 1) * batterySegLayer.segH - index * batterySegLayer.segGap
                         radius: Math.min(batterySegLayer.segH / 2, root.dashboard.config.rounding)
                         color: root.dashboard.batteryPercent > index * 10
-                            ? Qt.rgba(root.dashboard.dashboardAccent.r, root.dashboard.dashboardAccent.g, root.dashboard.dashboardAccent.b, 0.22)
+                            ? Qt.rgba(root.dashboard.config.dashboardPerformanceBatteryFillColor.r, root.dashboard.config.dashboardPerformanceBatteryFillColor.g, root.dashboard.config.dashboardPerformanceBatteryFillColor.b, 0.30)
                             : "transparent"
                     }
                 }
@@ -307,9 +314,9 @@ Item {
                 anchors.margins: 12
                 spacing: 8
 
-                Label { text: "Battery"; color: root.dashboard.dashboardAccent; font.bold: true }
+                Label { text: root.dashboard.config.formatUiText("Battery"); color: root.dashboard.config.dashboardBatteryPerformanceColor; font.bold: true }
                 Item { Layout.fillHeight: true }
-                Label { property bool qsKeepPixelSize: true; text: root.dashboard.batteryPercent + "%"; color: root.dashboard.config.textColor; font.pixelSize: root.dashboard.uiFontSize + 22; font.bold: true }
+                Label { property bool qsKeepPixelSize: true; text: root.dashboard.batteryPercent + "%"; color: root.dashboard.config.dashboardBatteryPerformanceColor; font.pixelSize: root.dashboard.uiFontSize + 22; font.bold: true }
                 Label { text: root.dashboard.batteryStatus; color: root.dashboard.config.mutedTextColor }
             }
         }

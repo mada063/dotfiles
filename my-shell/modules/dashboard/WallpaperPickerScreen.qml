@@ -92,7 +92,7 @@ PanelWindow {
             RowLayout {
                 Layout.fillWidth: true
                 Label {
-                    text: "Wallpaper"
+                    text: root.config.formatUiText("Wallpaper")
                     color: root.config.settingsTextColor
                     font.family: root.config.fontFamily
                     font.pixelSize: root.config.fontPixelSize + 6
@@ -116,7 +116,7 @@ PanelWindow {
                 Label {
                     anchors.centerIn: parent
                     visible: root.imageList.length === 0
-                    text: "No images found in " + root.searchDir
+                    text: root.config.formatUiText("No images found in") + " " + root.searchDir
                     color: root.config.mutedTextColor
                     font.family: root.config.fontFamily
                     font.pixelSize: root.config.fontPixelSize
@@ -139,14 +139,19 @@ PanelWindow {
                             delegate: Item {
                                 required property string modelData
                                 readonly property bool isCurrent: String(root.config.wallpaperPath) === modelData
+                                property bool tileHovered: wallHover.containsMouse
+                                readonly property int thumbDecodeWidth: Math.max(96, Math.round(width * 2))
+                                readonly property int thumbDecodeHeight: Math.max(96, Math.round(height * 2))
                                 width: 120
                                 height: thumbScrollView.height
+                                scale: tileHovered ? 1.04 : 1
+                                Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
                                 Rectangle {
                                     anchors.fill: parent
                                     color: "transparent"
                                     border.width: isCurrent ? Math.max(2, root.config.buttonBorderWidth + 1) : Math.max(1, root.config.buttonBorderWidth)
-                                    border.color: isCurrent ? root.config.settingsAccentColor : root.config.mutedTextColor
+                                    border.color: isCurrent ? root.config.settingsAccentColor : (tileHovered ? root.config.settingsAccentColor : root.config.mutedTextColor)
                                     radius: root.config.settingsRounding
                                     clip: true
 
@@ -154,9 +159,13 @@ PanelWindow {
                                         anchors.fill: parent
                                         anchors.margins: isCurrent ? 3 : 2
                                         source: "file://" + modelData
+                                        sourceSize.width: thumbDecodeWidth
+                                        sourceSize.height: thumbDecodeHeight
                                         fillMode: Image.PreserveAspectCrop
                                         smooth: true
                                         asynchronous: true
+                                        cache: true
+                                        mipmap: true
                                         layer.enabled: true
                                     }
 
@@ -170,7 +179,7 @@ PanelWindow {
 
                                         Label {
                                             anchors.centerIn: parent
-                                            text: "Active"
+                                            text: root.config.formatUiText("Active")
                                             color: "#ffffff"
                                             font.family: root.config.fontFamily
                                             font.pixelSize: root.config.fontPixelSize - 1
@@ -180,7 +189,9 @@ PanelWindow {
                                 }
 
                                 MouseArea {
+                                    id: wallHover
                                     anchors.fill: parent
+                                    hoverEnabled: true
                                     onClicked: {
                                         root.shell.setWallpaper(modelData);
                                         root.shell.wallpaperPickerVisible = false;

@@ -13,6 +13,8 @@ ScrollView {
 
     clip: true
 
+    function _T(s) { return root.control.config.formatUiText(s); }
+
     readonly property string detectedWindowManagerName: String(root.control.shell.detectedWindowManagerName || "Window Manager")
     readonly property string detectedWindowManagerKey: String(root.control.shell.detectedWindowManagerKey || "unknown")
     readonly property bool supportsLiveWindowManagerBinds: root.detectedWindowManagerKey === "hyprland"
@@ -218,7 +220,7 @@ ScrollView {
                     root.windowManagerBindError = "";
                 } catch (error) {
                     root.windowManagerBinds = [];
-                    root.windowManagerBindError = "Could not parse live " + root.detectedWindowManagerName + " binds.";
+                    root.windowManagerBindError = root._T("Could not parse live") + " " + root.detectedWindowManagerName + " " + root._T("binds.");
                 }
             }
         }
@@ -230,12 +232,12 @@ ScrollView {
 
         // ── Shell Hotkeys ─────────────────────────────────────────────
 
-        Label { text: "Shell Hotkeys"; color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 4 }
+        Label { text: _T("Shell hotkeys"); color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 4 }
 
         Label {
             text: root.detectedWindowManagerKey === "hyprland"
-                ? "These map to the live shell shortcuts and are written back to Hyprland global binds when shell-managed settings are enabled."
-                : "These map directly to the live shell shortcuts. Click Record and press the combination you want."
+                ? _T("These map to the live shell shortcuts and are written back to Hyprland global binds when shell-managed settings are enabled.")
+                : _T("These map directly to the live shell shortcuts. Click Record and press the combination you want.")
             color: root.control.config.mutedTextColor
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -257,9 +259,9 @@ ScrollView {
                         Layout.fillWidth: true
                         spacing: 1
 
-                        Label { text: modelData.title; color: root.control.config.textColor; font.bold: true }
+                        Label { text: _T(modelData.title); color: root.control.config.textColor; font.bold: true }
                         Label {
-                            text: modelData.subtitle
+                            text: _T(modelData.subtitle)
                             color: root.control.config.mutedTextColor
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -267,7 +269,7 @@ ScrollView {
                     }
 
                     StyledCheckBox {
-                        text: "Enabled"
+                        text: _T("Enabled")
                         control: root.control
                         checked: Boolean(root.control.config[modelData.enabledKey])
                         onToggled: root.control.config[modelData.enabledKey] = checked
@@ -308,16 +310,16 @@ ScrollView {
                             id: recordButton
                             anchors.fill: parent
                             text: root.recordingSequenceKey === modelData.sequenceKey
-                                ? "Press shortcut…"
+                                ? _T("Press shortcut…")
                                 : (root._sequenceValue(modelData.sequenceKey).length > 0
                                     ? root._sequenceValue(modelData.sequenceKey)
-                                    : "Record shortcut")
+                                    : _T("Record shortcut"))
                             onClicked: root._startRecording(modelData.sequenceKey, captureScope)
                         }
                     }
 
-                    Button { text: "Default"; onClicked: root._resetSequence(modelData.sequenceKey) }
-                    Button { text: "Clear"; onClicked: root._setSequence(modelData.sequenceKey, "") }
+                    Button { text: _T("Default"); onClicked: root._resetSequence(modelData.sequenceKey) }
+                    Button { text: _T("Clear"); onClicked: root._setSequence(modelData.sequenceKey, "") }
                 }
 
                 Rectangle {
@@ -335,15 +337,15 @@ ScrollView {
 
         RowLayout {
             Layout.fillWidth: true
-            Label { text: root.detectedWindowManagerName + " Binds"; color: root.control.config.accentColor; font.bold: true }
+            Label { text: root._T(root.detectedWindowManagerName + " binds"); color: root.control.config.accentColor; font.bold: true }
             Item { Layout.fillWidth: true }
-            Button { text: "Refresh"; enabled: root.supportsLiveWindowManagerBinds; onClicked: root._refreshWindowManagerBinds() }
+            Button { text: _T("Refresh"); enabled: root.supportsLiveWindowManagerBinds; onClicked: root._refreshWindowManagerBinds() }
         }
 
         Label {
             text: root.supportsLiveWindowManagerBinds
-                ? "Live bindings reported by the current window manager."
-                : "Live bind discovery is currently available for Hyprland sessions."
+                ? _T("Live bindings reported by the current window manager.")
+                : _T("Live bind discovery is currently available for Hyprland sessions.")
             color: root.control.config.mutedTextColor
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -361,7 +363,7 @@ ScrollView {
 
         Label {
             visible: root.supportsLiveWindowManagerBinds && root.windowManagerBindError.length < 1 && root.windowManagerBinds.length < 1
-            text: "No live binds were returned."
+            text: _T("No live binds were returned.")
             color: root.control.config.mutedTextColor
             Layout.topMargin: 4
         }
@@ -390,7 +392,7 @@ ScrollView {
                         Item { Layout.fillWidth: true }
                         Label {
                             visible: String(modelData.submap || "").length > 0
-                            text: "Submap: " + String(modelData.submap || "")
+                            text: _T("Submap:") + " " + String(modelData.submap || "")
                             color: root.control.config.mutedTextColor
                         }
                     }

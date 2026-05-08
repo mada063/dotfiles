@@ -31,6 +31,7 @@ def rgba(value, fallback):
     return f"rgba({text})"
 
 managed_enabled = bool(cfg.get("hyprlandManagedEnabled", True))
+disable_splash = bool(cfg.get("hyprlandDisableSplash", False))
 decoration = cfg.get("hyprlandDecoration") or {}
 monitors = cfg.get("hyprlandMonitors") or []
 binds = cfg.get("hyprlandBinds") or []
@@ -117,6 +118,11 @@ else:
     inactive_border = rgba(decoration.get("inactiveBorderColor"), "#444444")
 
     lines += [
+        "misc {",
+        f"    disable_hyprland_logo = {'true' if disable_splash else 'false'}",
+        f"    disable_splash_rendering = {'true' if disable_splash else 'false'}",
+        "}",
+        "",
         "general {",
         f"    gaps_in = {int(decoration.get('gapsIn', 5))}",
         f"    gaps_out = {int(decoration.get('gapsOut', 10))}",

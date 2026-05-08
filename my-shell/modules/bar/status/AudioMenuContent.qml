@@ -30,11 +30,11 @@ Column {
         spacing: 6
         MenuButton { host: root.host; buttonImplicitWidth: 26; buttonImplicitHeight: 24; labelText: "-"; onClicked: host.audioStep(-5) }
         MenuButton { host: root.host; buttonImplicitWidth: 26; buttonImplicitHeight: 24; labelText: "+"; onClicked: host.audioStep(5) }
-        MenuButton { host: root.host; buttonImplicitWidth: 56; buttonImplicitHeight: 24; labelText: "Mute"; onClicked: host.audioToggleMute() }
-        MenuButton { visible: root.showMixer; host: root.host; buttonImplicitWidth: 56; buttonImplicitHeight: 24; labelText: "Mixer"; onClicked: host.audioOpenMixer() }
+        MenuButton { host: root.host; buttonImplicitWidth: 56; buttonImplicitHeight: 24; labelText: host.config.formatUiText("Mute"); onClicked: host.audioToggleMute() }
+        MenuButton { visible: root.showMixer; host: root.host; buttonImplicitWidth: 56; buttonImplicitHeight: 24; labelText: host.config.formatUiText("Mixer"); onClicked: host.audioOpenMixer() }
     }
 
-    MenuSectionLabel { text: "Output Devices"; host: root.host }
+    MenuSectionLabel { text: host.config.formatUiText("Output devices"); host: root.host }
     ScrollView {
         width: parent.width
         height: root.outputListHeight
@@ -47,14 +47,19 @@ Column {
                 width: ListView.view.width - 8
                 height: 38
                 radius: Math.max(0, host.config.rounding - 3)
-                color: modelData.default ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.12) : "transparent"
+                color: modelData.default
+                    ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.12)
+                    : (_outRowHover.hovered ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.10) : "transparent")
                 border.width: host.config.buttonBorderWidth
-                border.color: host.config.mutedTextColor
+                border.color: (modelData.default || _outRowHover.hovered) ? host.config.overlayAccentColor : host.config.mutedTextColor
+
+                HoverHandler { id: _outRowHover }
+
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 6
                     spacing: 8
-                    Label { text: modelData.description; color: host.config.textColor; Layout.fillWidth: true; elide: Text.ElideRight }
+                    Label { text: modelData.description; color: _outRowHover.hovered ? host.config.overlayAccentColor : host.config.textColor; Layout.fillWidth: true; elide: Text.ElideRight }
                     MenuButton {
                         host: root.host
                         buttonImplicitWidth: modelData.default ? 64 : 72
@@ -68,7 +73,7 @@ Column {
         }
     }
 
-    MenuSectionLabel { text: "Input Devices"; host: root.host }
+    MenuSectionLabel { text: host.config.formatUiText("Input devices"); host: root.host }
     ScrollView {
         width: parent.width
         height: root.inputListHeight
@@ -81,14 +86,19 @@ Column {
                 width: ListView.view.width - 8
                 height: 38
                 radius: Math.max(0, host.config.rounding - 3)
-                color: modelData.default ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.12) : "transparent"
+                color: modelData.default
+                    ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.12)
+                    : (_inRowHover.hovered ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.10) : "transparent")
                 border.width: host.config.buttonBorderWidth
-                border.color: host.config.mutedTextColor
+                border.color: (modelData.default || _inRowHover.hovered) ? host.config.overlayAccentColor : host.config.mutedTextColor
+
+                HoverHandler { id: _inRowHover }
+
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 6
                     spacing: 8
-                    Label { text: modelData.description; color: host.config.textColor; Layout.fillWidth: true; elide: Text.ElideRight }
+                    Label { text: modelData.description; color: _inRowHover.hovered ? host.config.overlayAccentColor : host.config.textColor; Layout.fillWidth: true; elide: Text.ElideRight }
                     MenuButton {
                         host: root.host
                         buttonImplicitWidth: modelData.default ? 64 : 72

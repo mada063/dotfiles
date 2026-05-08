@@ -24,6 +24,9 @@ Item {
     property bool wifiEnabled: false
     property bool bluetoothEnabled: false
     property bool notificationsSilenced: false
+    property bool wifiStateReady: false
+    property bool bluetoothStateReady: false
+    property bool notificationsStateReady: false
     property var tooltipOwner: null
     property string tooltipPendingText: ""
     property string tooltipDisplayText: ""
@@ -41,13 +44,18 @@ Item {
     readonly property var _allTileIds: ["wifi", "bluetooth", "dnd", "wallpaper", "themes", "settings"]
 
     function _tileLabel(id) {
-        if (id === "wifi")      return "Wi-Fi"
-        if (id === "bluetooth") return "Bluetooth"
-        if (id === "dnd")       return "Silence"
-        if (id === "wallpaper") return "Wallpaper"
-        if (id === "themes")    return "Themes"
-        if (id === "settings")  return "Settings"
-        return id
+        if (id === "wifi")
+            return "WIFI"
+        if (id === "bluetooth")
+            return "BT"
+        const raw = (function() {
+            if (id === "dnd")        return "Silence"
+            if (id === "wallpaper") return "Wallpaper"
+            if (id === "themes")    return "Themes"
+            if (id === "settings")  return "Settings"
+            return id
+        }());
+        return root.config.formatUiText(String(raw));
     }
 
     function _tileIcon(id) {
@@ -85,6 +93,11 @@ Item {
         return true;
     }
 
+    function _dashboardTabVisible(id) {
+        const tabs = root.config.dashboardTabVisibility || {};
+        return tabs[String(id)] !== false;
+    }
+
     readonly property var visibleTileIds: {
         const tiles = root.config.quickSettingsTiles || [];
         return tiles.filter(t => t.visible !== false).map(t => t.id);
@@ -107,15 +120,25 @@ Item {
     }
 
     function refreshStates() {
-        wifiStateProc.exec({ command: wifiStateProc.command });
-        bluetoothStateProc.exec({ command: bluetoothStateProc.command });
-        notificationsStateProc.exec({ command: notificationsStateProc.command });
+        if (!wifiStateProc.running)
+            wifiStateProc.exec({ command: wifiStateProc.command });
+        if (!bluetoothStateProc.running)
+            bluetoothStateProc.exec({ command: bluetoothStateProc.command });
+        if (!notificationsStateProc.running)
+            notificationsStateProc.exec({ command: notificationsStateProc.command });
+    }
+
+    function postQuickSettingsMessage(summary, body, urgency) {
+        if (!root.shell || root.shell.pushSystemNotification === undefined)
+            return;
+        root.shell.pushSystemNotification(String(summary || ""), String(body || ""), Number(urgency === undefined ? 0 : urgency), "Quick Settings");
     }
 
     function toggleWifi() {
         const next = !root.wifiEnabled;
         root.wifiEnabled = next;
         wifiToggleProc.exec({ command: ["bash", "-lc", "if command -v nmcli >/dev/null 2>&1; then nmcli radio wifi " + (next ? "on" : "off") + "; fi"] });
+        postQuickSettingsMessage("Wi-Fi", next ? "Turning on..." : "Turning off...", 0);
         refreshTimer.restart();
     }
 
@@ -123,6 +146,7 @@ Item {
         const next = !root.bluetoothEnabled;
         root.bluetoothEnabled = next;
         bluetoothToggleProc.exec({ command: ["bash", "-lc", "if command -v bluetoothctl >/dev/null 2>&1; then bluetoothctl power " + (next ? "on" : "off") + "; fi"] });
+        postQuickSettingsMessage("Bluetooth", next ? "Turning on..." : "Turning off...", 0);
         refreshTimer.restart();
     }
 
@@ -130,6 +154,7 @@ Item {
         const next = !root.notificationsSilenced;
         root.notificationsSilenced = next;
         notificationsToggleProc.exec({ command: ["bash", "-lc", "if command -v dunstctl >/dev/null 2>&1; then dunstctl set-paused " + (next ? "true" : "false") + "; elif command -v makoctl >/dev/null 2>&1; then if " + (next ? "true" : "false") + "; then makoctl mode -a do-not-disturb 2>/dev/null || makoctl set-mode do-not-disturb 2>/dev/null; else makoctl mode -r do-not-disturb 2>/dev/null || makoctl set-mode default 2>/dev/null; fi; elif command -v swaync-client >/dev/null 2>&1; then swaync-client -d; fi"] });
+        postQuickSettingsMessage("Notifications", next ? "Do not disturb enabled" : "Do not disturb disabled", 0);
         refreshTimer.restart();
     }
 
@@ -142,6 +167,7 @@ Item {
             quickSettingsWindowActive = true;
             quickSettingsCloseDebounce.stop();
             quickSettingsHideTimer.stop();
+            refreshStates();
             if (!quickSettingsPresented)
                 quickSettingsPresentTimer.restart();
         } else if (quickSettingsWindowActive) {
@@ -159,6 +185,7 @@ Item {
     // WlrLayer.Top (=2) is below WlrLayer.Overlay (=3), so menuPanel always receives clicks first.
     PanelWindow {
         id: dismissPanel
+        screen: root.shell.quickSettingsAnchorScreen || (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
         visible: root.quickSettingsWindowActive
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
@@ -173,39 +200,48 @@ Item {
         }
     }
 
-    PanelWindow {
-        id: triggerPanel
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.exclusionMode: ExclusionMode.Ignore
-        anchors { bottom: true; right: true }
-        margins { top: 0; left: 0; right: 0; bottom: 0 }
-        implicitWidth: root.triggerW
-        implicitHeight: root.triggerH
-        exclusiveZone: 0
-        color: "transparent"
+    Variants {
+        model: Quickshell.screens
+        Scope {
+            property var modelData: null
 
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            acceptedButtons: Qt.NoButton
-            onEntered: {
-                if (root.quickSettingsActive) {
-                    root.shell.cancelQuickSettingsTriggerClose();
-                    root.shell.cancelQuickSettingsOverlayClose();
-                    return;
+            PanelWindow {
+                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.exclusionMode: ExclusionMode.Ignore
+                screen: modelData
+                anchors { bottom: true; right: true }
+                margins { top: 0; left: 0; right: 0; bottom: 0 }
+                implicitWidth: root.triggerW
+                implicitHeight: root.triggerH
+                exclusiveZone: 0
+                color: "transparent"
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
+                    onEntered: {
+                        root.shell.quickSettingsAnchorScreen = modelData;
+                        if (root.quickSettingsActive) {
+                            root.shell.cancelQuickSettingsTriggerClose();
+                            root.shell.cancelQuickSettingsOverlayClose();
+                            return;
+                        }
+                        quickSettingsEdgeHold.start();
+                    }
+                    onExited: {
+                        quickSettingsEdgeHold.stop();
+                        if (!root.shell.quickSettingsOverlayHovered && !root.quickSettingsWindowActive)
+                            root.shell.scheduleQuickSettingsTriggerClose();
+                    }
                 }
-                quickSettingsEdgeHold.start();
-            }
-            onExited: {
-                quickSettingsEdgeHold.stop();
-                if (!root.shell.quickSettingsOverlayHovered && !root.quickSettingsWindowActive)
-                    root.shell.scheduleQuickSettingsTriggerClose();
             }
         }
     }
 
     PanelWindow {
         id: menuPanel
+        screen: root.shell.quickSettingsAnchorScreen || (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
         visible: root.quickSettingsWindowActive
         focusable: root.quickSettingsWindowActive
         WlrLayershell.keyboardFocus: root.quickSettingsWindowActive ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
@@ -260,7 +296,7 @@ Item {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.margins: 14
-                spacing: 10
+                spacing: 15
 
                 // ── Tile grid ──────────────────────────────────────────
                 Flow {
@@ -273,31 +309,36 @@ Item {
                             required property string modelData
                             readonly property string tileId: modelData
                             readonly property bool tileActive: root._tileActive(tileId)
+                            property bool tileHovered: tileHoverArea.containsMouse
 
                             width: (root.menuW - 28 - 8 * 2) / 3
-                            height: 52
+                            height: 50
                             color: tileActive
-                                ? Qt.rgba(root.config.overlayAccentColor.r, root.config.overlayAccentColor.g, root.config.overlayAccentColor.b, 0.22)
-                                : Qt.rgba(root.config.overlayTextColor.r, root.config.overlayTextColor.g, root.config.overlayTextColor.b, 0.06)
-                            border.color: tileActive ? root.config.overlayAccentColor : root.config.mutedTextColor
+                                ? root.config.quickSettingsButtonActiveColor
+                                : root.config.quickSettingsButtonInactiveColor
+                            border.color: tileHovered
+                                ? root.config.quickSettingsButtonHoverEffectColor
+                                : (tileActive ? root.config.quickSettingsActiveSettingBorderColor : root.config.quickSettingsSettingBorderColor)
                             border.width: root.config.buttonBorderWidth
                             radius: Math.max(0, root.config.overlayRounding - 2)
+                            scale: tileHovered ? 1.02 : 1
+                            Behavior on scale { NumberAnimation { duration: 100 } }
 
                             ColumnLayout {
                                 anchors.centerIn: parent
-                                spacing: 3
+                                spacing: 2
 
                                 Label {
                                     Layout.alignment: Qt.AlignHCenter
                                     text: root._tileIcon(tileId)
-                                    color: tileActive ? root.config.overlayAccentColor : root.config.overlayTextColor
+                                    color: tileActive ? root.config.quickSettingsActiveSettingTextColor : root.config.quickSettingsSettingTextColor
                                     font.family: root.uiFontFamily
                                     font.pixelSize: root.uiFontSize + 6
                                 }
                                 Label {
                                     Layout.alignment: Qt.AlignHCenter
                                     text: root._tileLabel(tileId)
-                                    color: tileActive ? root.config.overlayAccentColor : root.config.mutedTextColor
+                                    color: tileActive ? root.config.quickSettingsActiveSettingTextColor : root.config.quickSettingsSettingTextColor
                                     font.family: root.uiFontFamily
                                     font.pixelSize: root.uiFontSize - 1
                                 }
@@ -339,14 +380,16 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     Label {
-                        text: root.tileEditMode ? "Done" : "Customize"
-                        color: root.config.mutedTextColor
+                        text: root.config.formatUiText(root.tileEditMode ? "Done" : "Customize")
+                        color: customizeHover.containsMouse ? root.config.overlayAccentColor : root.config.mutedTextColor
                         font.family: root.uiFontFamily
                         font.pixelSize: root.uiFontSize - 1
 
                         MouseArea {
+                            id: customizeHover
                             anchors.fill: parent
                             anchors.margins: -4
+                            hoverEnabled: true
                             onClicked: root.tileEditMode = !root.tileEditMode
                         }
                     }
@@ -366,8 +409,12 @@ Item {
 
                     Item { height: 6 }
 
-                    Repeater {
-                        model: [
+                    ColumnLayout {
+                        spacing: 2
+                        Layout.fillWidth: true
+
+                        Repeater {
+                            model: [
                             // Both
                             { icon: root._tileIcon("wifi"),      label: "Wi-Fi",      tileId: "wifi",      barId: "wifi" },
                             { icon: root._tileIcon("bluetooth"), label: "Bluetooth",  tileId: "bluetooth", barId: "bluetooth" },
@@ -381,56 +428,94 @@ Item {
                             { icon: root._tileIcon("wallpaper"), label: "Wallpaper",  tileId: "wallpaper" },
                             { icon: root._tileIcon("themes"),    label: "Themes",     tileId: "themes" },
                             { icon: root._tileIcon("settings"),  label: "Settings",   tileId: "settings" }
-                        ]
-                        delegate: RowLayout {
+                            // Dashboard
+                            , { icon: "\u25A3", label: "Dashboard",   dashboardId: "overview" }
+                            , { icon: "\u25A6", label: "Performance", dashboardId: "performance" }
+                            , { icon: "\u23F3", label: "Focus",       dashboardId: "focus" }
+                            , { icon: "\u266B", label: "Media",       dashboardId: "media" }
+                            , { icon: "\uD83D\uDCC5", label: "Calendar", dashboardId: "calendar" }
+                            , { icon: "\u21BB", label: "Updates", dashboardId: "updates" }
+                            ]
+                            delegate: Rectangle {
                             required property var modelData
                             Layout.fillWidth: true
-                            height: 32
-                            spacing: 10
+                            implicitHeight: 30
+                            radius: Math.max(0, root.config.rounding - 3)
+                            color: qsRowHover.hovered
+                                ? Qt.rgba(root.config.quickSettingsButtonHoverEffectColor.r, root.config.quickSettingsButtonHoverEffectColor.g, root.config.quickSettingsButtonHoverEffectColor.b, 0.10)
+                                : "transparent"
+                            border.width: root.config.buttonBorderWidth
+                            border.color: qsRowHover.hovered ? root.config.quickSettingsButtonHoverEffectColor : root.config.buttonBorderColor
 
-                            Label {
-                                text: modelData.icon
-                                color: root.config.overlayTextColor
-                                font.family: root.uiFontFamily
-                                font.pixelSize: root.uiFontSize + 2
-                            }
-                            Label {
-                                text: modelData.label
-                                color: root.config.overlayTextColor
-                                font.family: root.uiFontFamily
-                                font.pixelSize: root.uiFontSize
-                                Layout.fillWidth: true
-                            }
+                            HoverHandler { id: qsRowHover }
 
-                            Shared.SwitchPill {
-                                checked: modelData.tileId ? root._tileVisible(modelData.tileId) : false
-                                enabled: !!modelData.tileId
-                                rounding: root.config.rounding
-                                onColor: Qt.rgba(root.config.overlayAccentColor.r, root.config.overlayAccentColor.g, root.config.overlayAccentColor.b, 0.7)
-                                offColor: Qt.rgba(root.config.overlayTextColor.r, root.config.overlayTextColor.g, root.config.overlayTextColor.b, 0.12)
-                                onBorderColor: root.config.overlayAccentColor
-                                offBorderColor: root.config.mutedTextColor
-                                onKnobColor: root.config.overlayAccentColor
-                                offKnobColor: root.config.mutedTextColor
-                                opacity: modelData.tileId ? 1 : 0
-                                onToggled: if (modelData.tileId) root.shell.setQuickSettingsTileVisible(modelData.tileId, !root._tileVisible(modelData.tileId))
-                            }
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                anchors.topMargin: 5
+                                anchors.bottomMargin: 5
+                                spacing: 10
 
-                            Shared.SwitchPill {
-                                checked: modelData.barId ? ((root.config.barOverlayVisibility || {})[modelData.barId] !== false) : false
-                                enabled: !!modelData.barId
-                                rounding: root.config.rounding
-                                onColor: Qt.rgba(root.config.overlayAccentColor.r, root.config.overlayAccentColor.g, root.config.overlayAccentColor.b, 0.7)
-                                offColor: Qt.rgba(root.config.overlayTextColor.r, root.config.overlayTextColor.g, root.config.overlayTextColor.b, 0.12)
-                                onBorderColor: root.config.overlayAccentColor
-                                offBorderColor: root.config.mutedTextColor
-                                onKnobColor: root.config.overlayAccentColor
-                                offKnobColor: root.config.mutedTextColor
-                                opacity: modelData.barId ? 1 : 0
-                                onToggled: if (modelData.barId) root.shell.setBarOverlayVisible(modelData.barId, !((root.config.barOverlayVisibility || {})[modelData.barId] !== false))
+                                Label {
+                                    text: modelData.icon
+                                    color: qsRowHover.hovered ? root.config.quickSettingsButtonHoverEffectColor : root.config.overlayTextColor
+                                    font.family: root.uiFontFamily
+                                    font.pixelSize: root.uiFontSize + 2
+                                }
+                                Label {
+                                    text: root.config.formatUiText(String(modelData.label || ""))
+                                    color: qsRowHover.hovered ? root.config.quickSettingsButtonHoverEffectColor : root.config.overlayTextColor
+                                    font.family: root.uiFontFamily
+                                    font.pixelSize: root.uiFontSize
+                                    Layout.fillWidth: true
+                                }
+
+                                Shared.SwitchPill {
+                                    checked: modelData.tileId ? root._tileVisible(modelData.tileId) : false
+                                    enabled: !!modelData.tileId
+                                    rounding: root.config.rounding
+                                    onColor: root.config.buttonActiveBackgroundColor
+                                    offColor: root.config.buttonBackgroundColor
+                                    onBorderColor: root.config.buttonActiveBorderColor
+                                    offBorderColor: root.config.buttonBorderColor
+                                    onKnobColor: root.config.buttonActiveTextColor
+                                    offKnobColor: root.config.buttonTextColor
+                                    opacity: modelData.tileId ? 1 : 0
+                                    onToggled: if (modelData.tileId) root.shell.setQuickSettingsTileVisible(modelData.tileId, !root._tileVisible(modelData.tileId))
+                                }
+
+                                Shared.SwitchPill {
+                                    checked: modelData.barId ? ((root.config.barOverlayVisibility || {})[modelData.barId] !== false) : false
+                                    enabled: !!modelData.barId
+                                    rounding: root.config.rounding
+                                    onColor: root.config.buttonActiveBackgroundColor
+                                    offColor: root.config.buttonBackgroundColor
+                                    onBorderColor: root.config.buttonActiveBorderColor
+                                    offBorderColor: root.config.buttonBorderColor
+                                    onKnobColor: root.config.buttonActiveTextColor
+                                    offKnobColor: root.config.buttonTextColor
+                                    opacity: modelData.barId ? 1 : 0
+                                    onToggled: if (modelData.barId) root.shell.setBarOverlayVisible(modelData.barId, !((root.config.barOverlayVisibility || {})[modelData.barId] !== false))
+                                }
+
+                                Shared.SwitchPill {
+                                    checked: modelData.dashboardId ? root._dashboardTabVisible(modelData.dashboardId) : false
+                                    enabled: !!modelData.dashboardId
+                                    rounding: root.config.rounding
+                                    onColor: root.config.buttonActiveBackgroundColor
+                                    offColor: root.config.buttonBackgroundColor
+                                    onBorderColor: root.config.buttonActiveBorderColor
+                                    offBorderColor: root.config.buttonBorderColor
+                                    onKnobColor: root.config.buttonActiveTextColor
+                                    offKnobColor: root.config.buttonTextColor
+                                    opacity: modelData.dashboardId ? 1 : 0
+                                    onToggled: if (modelData.dashboardId) root.shell.setDashboardTabVisible(modelData.dashboardId, !root._dashboardTabVisible(modelData.dashboardId))
+                                }
                             }
                         }
                     }
+                }
                 }
 
                 // ── Separator ────────────────────────────────────────────
@@ -446,8 +531,8 @@ Item {
                     spacing: 8
 
                     Label {
-                        text: "Notifications"
-                        color: root.config.overlayTextColor
+                        text: root.config.formatUiText("Notifications")
+                        color: root.config.quickSettingsNotificationTextColor
                         font.family: root.uiFontFamily
                         font.pixelSize: root.uiFontSize
                         font.bold: true
@@ -455,24 +540,28 @@ Item {
                     Item { Layout.fillWidth: true }
                     Label {
                         visible: root.notifications.length > 0
-                        text: "Clear"
-                        color: root.config.mutedTextColor
+                        text: root.config.formatUiText("Clear")
+                        color: clearHover.containsMouse ? root.config.overlayAccentColor : root.config.mutedTextColor
                         font.family: root.uiFontFamily
                         font.pixelSize: root.uiFontSize - 1
                         MouseArea {
+                            id: clearHover
                             anchors.fill: parent
                             anchors.margins: -4
+                            hoverEnabled: true
                             onClicked: root.shell.clearNotificationHistory()
                         }
                     }
                     Label {
                         text: root.notifExpanded ? "\u25B4" : "\u25BE"
-                        color: root.config.mutedTextColor
+                        color: expandHover.containsMouse ? root.config.overlayAccentColor : root.config.mutedTextColor
                         font.family: root.uiFontFamily
                         font.pixelSize: root.uiFontSize
                         MouseArea {
+                            id: expandHover
                             anchors.fill: parent
                             anchors.margins: -4
+                            hoverEnabled: true
                             onClicked: root.notifExpanded = !root.notifExpanded
                         }
                     }
@@ -486,7 +575,7 @@ Item {
 
                     Label {
                         visible: root.notifications.length === 0
-                        text: "No notifications"
+                        text: root.config.formatUiText("No notifications")
                         color: root.config.mutedTextColor
                         font.family: root.uiFontFamily
                         font.pixelSize: root.uiFontSize - 1
@@ -500,8 +589,8 @@ Item {
                             readonly property var notif: root.notifications[index] || {}
                             Layout.fillWidth: true
                             implicitHeight: notifRow.implicitHeight + 10
-                            color: Qt.rgba(root.config.overlayTextColor.r, root.config.overlayTextColor.g, root.config.overlayTextColor.b, 0.05)
-                            border.color: Qt.rgba(root.config.overlayTextColor.r, root.config.overlayTextColor.g, root.config.overlayTextColor.b, 0.1)
+                            color: root.config.quickSettingsNotificationBackgroundColor
+                            border.color: root.config.quickSettingsNotificationBorderColor
                             border.width: 1
                             radius: Math.max(0, root.config.overlayRounding - 4)
 
@@ -510,7 +599,7 @@ Item {
                                 anchors.left: parent.left
                                 anchors.right: parent.right
                                 anchors.top: parent.top
-                                anchors.margins: 8
+                                anchors.margins: root.config.quickSettingsNotificationPadding
                                 spacing: 8
 
                                 ColumnLayout {
@@ -519,7 +608,7 @@ Item {
 
                                     Label {
                                         text: String(notif.appName || notif.summary || "")
-                                        color: root.config.overlayAccentColor
+                                        color: root.config.quickSettingsNotificationTextColor
                                         font.family: root.uiFontFamily
                                         font.pixelSize: root.uiFontSize - 1
                                         font.bold: true
@@ -529,7 +618,7 @@ Item {
                                     Label {
                                         visible: String(notif.body || "").length > 0
                                         text: String(notif.body || "")
-                                        color: root.config.overlayTextColor
+                                        color: root.config.quickSettingsNotificationTextColor
                                         font.family: root.uiFontFamily
                                         font.pixelSize: root.uiFontSize - 1
                                         wrapMode: Text.NoWrap
@@ -612,6 +701,7 @@ Item {
             if (!root.quickSettingsActive) {
                 root.quickSettingsPresented = false;
                 root.quickSettingsWindowActive = false;
+                root.shell.quickSettingsAnchorScreen = null;
             }
         }
     }
@@ -640,7 +730,13 @@ Item {
         command: ["bash", "-lc", "if command -v nmcli >/dev/null 2>&1; then state=$(nmcli radio wifi | head -n1 | tr '[:upper:]' '[:lower:]'); [ \"$state\" = enabled ] && echo on || echo off; else echo off; fi"]
         stdout: StdioCollector {
             waitForEnd: true
-            onStreamFinished: root.wifiEnabled = String(text).trim() === "on"
+            onStreamFinished: {
+                const nextEnabled = String(text).trim() === "on";
+                if (root.wifiStateReady && nextEnabled !== root.wifiEnabled)
+                    root.postQuickSettingsMessage("Wi-Fi state refreshed", nextEnabled ? "Wi-Fi enabled" : "Wi-Fi disabled", 0);
+                root.wifiEnabled = nextEnabled;
+                root.wifiStateReady = true;
+            }
         }
     }
 
@@ -649,7 +745,13 @@ Item {
         command: ["bash", "-lc", "if command -v bluetoothctl >/dev/null 2>&1; then state=$(bluetoothctl show 2>/dev/null | awk -F': ' '/Powered:/ {print tolower($2); exit}'); [ \"$state\" = yes ] && echo on || echo off; else echo off; fi"]
         stdout: StdioCollector {
             waitForEnd: true
-            onStreamFinished: root.bluetoothEnabled = String(text).trim() === "on"
+            onStreamFinished: {
+                const nextEnabled = String(text).trim() === "on";
+                if (root.bluetoothStateReady && nextEnabled !== root.bluetoothEnabled)
+                    root.postQuickSettingsMessage("Bluetooth state refreshed", nextEnabled ? "Bluetooth enabled" : "Bluetooth disabled", 0);
+                root.bluetoothEnabled = nextEnabled;
+                root.bluetoothStateReady = true;
+            }
         }
     }
 
@@ -658,7 +760,13 @@ Item {
         command: ["bash", "-lc", "if command -v dunstctl >/dev/null 2>&1; then state=$(dunstctl is-paused 2>/dev/null | tr '[:upper:]' '[:lower:]'); [ \"$state\" = true ] && echo on || echo off; elif command -v makoctl >/dev/null 2>&1; then state=$(makoctl mode 2>/dev/null | tr '[:upper:]' '[:lower:]'); [ \"$state\" = do-not-disturb ] && echo on || echo off; elif command -v swaync-client >/dev/null 2>&1; then state=$(swaync-client -D 2>/dev/null | tr '[:upper:]' '[:lower:]'); [ \"$state\" = true ] && echo on || echo off; else echo off; fi"]
         stdout: StdioCollector {
             waitForEnd: true
-            onStreamFinished: root.notificationsSilenced = String(text).trim() === "on"
+            onStreamFinished: {
+                const nextSilenced = String(text).trim() === "on";
+                if (root.notificationsStateReady && nextSilenced !== root.notificationsSilenced)
+                    root.postQuickSettingsMessage("Notification mode refreshed", nextSilenced ? "Do not disturb enabled" : "Do not disturb disabled", 0);
+                root.notificationsSilenced = nextSilenced;
+                root.notificationsStateReady = true;
+            }
         }
     }
 
@@ -675,9 +783,9 @@ Item {
 
     Timer {
         interval: Math.max(1200, root.config.quickSidebarPollMs)
-        running: true
+        running: root.quickSettingsWindowActive
         repeat: true
-        triggeredOnStart: true
+        triggeredOnStart: false
         onTriggered: root.refreshStates()
     }
 }

@@ -16,6 +16,8 @@ ScrollView {
 
     clip: true
 
+    function _T(s) { return root.control.config.formatUiText(s); }
+
     function _copy(value) { return Common.deepCopy(value); }
 
     function _updateMonitor(index, key, value) {
@@ -238,13 +240,13 @@ ScrollView {
 
         // ── Shell ──────────────────────────────────────────────────────
 
-        Label { text: "Screen"; color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 10 }
+        Label { text: _T("Screen"); color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 10 }
 
         RowLayout {
             Layout.fillWidth: true
             implicitHeight: 34
             spacing: 12
-            Label { text: "Bar Orientation"; color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
+            Label { text: _T("Bar orientation"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
             ComboBox {
                 Layout.preferredWidth: 110
                 model: ["top", "left"]
@@ -258,7 +260,7 @@ ScrollView {
             implicitHeight: 34
             Layout.bottomMargin: 16
             StyledCheckBox {
-                text: "Show left logo / title"
+                text: _T("Show left logo / title")
                 control: root.control
                 checked: root.control.config.showShellTitle
                 onToggled: root.control.config.showShellTitle = checked
@@ -268,10 +270,10 @@ ScrollView {
 
         // ── Layout Preview ────────────────────────────────────────────
 
-        Label { text: "Layout Preview"; color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 4 }
+        Label { text: _T("Layout preview"); color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 4 }
 
         Label {
-            text: "Click to select a monitor. Drag to reposition. Snap guides appear near edges."
+            text: _T("Click to select a monitor. Drag to reposition. Snap guides appear near edges.")
             color: root.control.config.mutedTextColor
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -286,17 +288,17 @@ ScrollView {
             Label {
                 Layout.fillWidth: true
                 text: root._selectedMonitor()
-                    ? "Selected: " + String(root._selectedMonitor().name || ("Monitor " + (root.selectedMonitorIndex + 1)))
+                    ? _T("Selected:") + " " + String(root._selectedMonitor().name || (_T("Monitor") + " " + (root.selectedMonitorIndex + 1)))
                         + "  (" + (Number(root._selectedMonitor().positionX) || 0) + ", " + (Number(root._selectedMonitor().positionY) || 0) + ")"
-                    : "No monitor selected."
+                    : _T("No monitor selected.")
                 color: root.control.config.textColor
                 elide: Text.ElideRight
                 verticalAlignment: Text.AlignVCenter
             }
 
-            Button { text: "Stack Row";    onClicked: root._stackEnabledMonitors(true) }
-            Button { text: "Stack Column"; onClicked: root._stackEnabledMonitors(false) }
-            Button { text: "Reset";        enabled: root.selectedMonitorIndex >= 0; onClicked: root._resetSelectedPosition() }
+            Button { text: _T("Stack row");    onClicked: root._stackEnabledMonitors(true) }
+            Button { text: _T("Stack column"); onClicked: root._stackEnabledMonitors(false) }
+            Button { text: _T("Reset");        enabled: root.selectedMonitorIndex >= 0; onClicked: root._resetSelectedPosition() }
         }
 
         // Interactive drag canvas
@@ -396,6 +398,7 @@ ScrollView {
                     }
 
                     Label {
+                        property bool qsKeepPixelSize: true
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom: parent.bottom; anchors.bottomMargin: 6
                         text: modelData.mode + "  " + modelData.scale + "×"
@@ -427,12 +430,12 @@ ScrollView {
             Layout.fillWidth: true
             Layout.bottomMargin: 20
             spacing: 6
-            Button { text: "Up";    enabled: root.selectedMonitorIndex >= 0; onClicked: root._nudgeSelected(0, -50) }
-            Button { text: "Left";  enabled: root.selectedMonitorIndex >= 0; onClicked: root._nudgeSelected(-50, 0) }
-            Button { text: "Right"; enabled: root.selectedMonitorIndex >= 0; onClicked: root._nudgeSelected(50, 0) }
-            Button { text: "Down";  enabled: root.selectedMonitorIndex >= 0; onClicked: root._nudgeSelected(0, 50) }
+            Button { text: _T("Up");    enabled: root.selectedMonitorIndex >= 0; onClicked: root._nudgeSelected(0, -50) }
+            Button { text: _T("Left");  enabled: root.selectedMonitorIndex >= 0; onClicked: root._nudgeSelected(-50, 0) }
+            Button { text: _T("Right"); enabled: root.selectedMonitorIndex >= 0; onClicked: root._nudgeSelected(50, 0) }
+            Button { text: _T("Down");  enabled: root.selectedMonitorIndex >= 0; onClicked: root._nudgeSelected(0, 50) }
             Item { Layout.fillWidth: true }
-            Label { text: "Nudge by 50 px"; color: root.control.config.mutedTextColor; verticalAlignment: Text.AlignVCenter }
+            Label { text: _T("Nudge by 50 px"); color: root.control.config.mutedTextColor; verticalAlignment: Text.AlignVCenter }
         }
 
         // ── Displays ──────────────────────────────────────────────────
@@ -440,11 +443,11 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             Layout.bottomMargin: 4
-            Label { text: "Displays"; color: root.control.config.accentColor; font.bold: true }
+            Label { text: _T("Displays"); color: root.control.config.accentColor; font.bold: true }
             Item { Layout.fillWidth: true }
-            Button { text: "Apply Now"; onClicked: root.control.shell.queueHyprlandSync() }
+            Button { text: _T("Apply now"); onClicked: root.control.shell.queueHyprlandSync() }
             Button {
-                text: "Add Monitor"
+                text: _T("Add monitor")
                 onClicked: {
                     let next = root._copy(root.control.config.hyprlandMonitors || []);
                     next.push({ name: "", mode: "preferred", positionX: 0, positionY: 0,
@@ -456,7 +459,7 @@ ScrollView {
         }
 
         Label {
-            text: "Written to the shell-managed Hyprland include on Apply."
+            text: _T("Written to the shell-managed Hyprland include on Apply.")
             color: root.control.config.mutedTextColor
             Layout.fillWidth: true
             Layout.bottomMargin: 8
@@ -489,16 +492,16 @@ ScrollView {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Label { text: "Monitor " + (index + 1); color: root.control.config.textColor; font.bold: true }
+                        Label { text: _T("Monitor") + " " + (index + 1); color: root.control.config.textColor; font.bold: true }
                         Item { Layout.fillWidth: true }
                         StyledCheckBox {
-                            text: "Enabled"
+                            text: _T("Enabled")
                             control: root.control
                             checked: Boolean(modelData.enabled)
                             onToggled: root._updateMonitor(index, "enabled", checked)
                         }
                         Button {
-                            text: confirmRemove ? "Confirm" : "Remove"
+                            text: confirmRemove ? _T("Confirm") : _T("Remove")
                             onClicked: {
                                 if (!confirmRemove) { confirmRemove = true; return; }
                                 let next = root._copy(root.control.config.hyprlandMonitors || []);
@@ -507,44 +510,44 @@ ScrollView {
                                 root._syncSelection();
                             }
                         }
-                        Button { text: "Cancel"; visible: confirmRemove; onClicked: confirmRemove = false }
+                        Button { text: _T("Cancel"); visible: confirmRemove; onClicked: confirmRemove = false }
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 12
-                        Label { text: "Name"; color: root.control.config.textColor; Layout.preferredWidth: 70 }
+                        Label { text: _T("Name"); color: root.control.config.textColor; Layout.preferredWidth: 70 }
                         TextField { Layout.fillWidth: true; text: String(modelData.name || ""); onEditingFinished: root._updateMonitor(index, "name", String(text).trim()) }
-                        Label { text: "Mode"; color: root.control.config.textColor; Layout.preferredWidth: 40 }
+                        Label { text: _T("Mode"); color: root.control.config.textColor; Layout.preferredWidth: 40 }
                         TextField { Layout.fillWidth: true; text: String(modelData.mode || "preferred"); onEditingFinished: root._updateMonitor(index, "mode", String(text).trim() || "preferred") }
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 12
-                        Label { text: "X"; color: root.control.config.textColor; Layout.preferredWidth: 70 }
+                        Label { text: _T("X"); color: root.control.config.textColor; Layout.preferredWidth: 70 }
                         SpinBox { Layout.fillWidth: true; from: -10000; to: 10000; value: Number(modelData.positionX || 0); onValueModified: root._updateMonitor(index, "positionX", value) }
-                        Label { text: "Y"; color: root.control.config.textColor; Layout.preferredWidth: 40 }
+                        Label { text: _T("Y"); color: root.control.config.textColor; Layout.preferredWidth: 40 }
                         SpinBox { Layout.fillWidth: true; from: -10000; to: 10000; value: Number(modelData.positionY || 0); onValueModified: root._updateMonitor(index, "positionY", value) }
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 12
-                        Label { text: "Scale"; color: root.control.config.textColor; Layout.preferredWidth: 70 }
+                        Label { text: _T("Scale"); color: root.control.config.textColor; Layout.preferredWidth: 70 }
                         TextField { Layout.fillWidth: true; text: String(modelData.scale || 1); onEditingFinished: root._updateMonitor(index, "scale", Number(text) || 1) }
-                        Label { text: "Transform"; color: root.control.config.textColor; Layout.preferredWidth: 70 }
+                        Label { text: _T("Transform"); color: root.control.config.textColor; Layout.preferredWidth: 70 }
                         SpinBox { Layout.fillWidth: true; from: 0; to: 7; value: Number(modelData.transform || 0); onValueModified: root._updateMonitor(index, "transform", value) }
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 12
-                        Label { text: "Mirror Of"; color: root.control.config.textColor; Layout.preferredWidth: 70 }
+                        Label { text: _T("Mirror of"); color: root.control.config.textColor; Layout.preferredWidth: 70 }
                         TextField {
                             Layout.fillWidth: true
                             text: String(modelData.mirrorOf || "")
-                            placeholderText: "Optional monitor name"
+                            placeholderText: _T("Optional monitor name")
                             onEditingFinished: root._updateMonitor(index, "mirrorOf", String(text).trim())
                         }
                     }

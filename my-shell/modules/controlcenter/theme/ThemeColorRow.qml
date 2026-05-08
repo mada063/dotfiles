@@ -14,6 +14,7 @@ ColumnLayout {
     spacing: 4
 
     Label {
+        property bool qsKeepPixelSize: true
         text: root.labelText
         color: root.config.textColor
         font.pixelSize: Math.max(11, root.config.fontPixelSize - 1)

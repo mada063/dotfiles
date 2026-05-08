@@ -73,6 +73,17 @@ Item {
         return "Window";
     }
 
+    function _iconSourceFromPath(iconPath) {
+        const raw = String(iconPath || "").trim();
+        if (!raw.length || raw === "-")
+            return "";
+        try {
+            return "file://" + encodeURI(raw.replace(/\\/g, "/"));
+        } catch (e) {
+            return "";
+        }
+    }
+
     function _previewWindows() {
         const source = Array.isArray(root.items) ? root.items.slice() : [];
         source.sort((a, b) => {
@@ -98,6 +109,7 @@ Item {
             out.push({
                 title: root._windowTitle(item),
                 className: String(item.className || item.initialClass || "").trim(),
+                iconPath: String(item.iconPath || "").trim(),
                 floating: Boolean(item.floating),
                 fullscreen: Boolean(item.fullscreen),
                 x: x,
@@ -111,8 +123,8 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: root.host.config.overlayBackgroundColor
-        border.color: root.host.config.overlayAccentColor
+        color: root.host.config.workspaceVisualizationBackgroundColor
+        border.color: root.host.config.visualizationBorderColor
         border.width: root.host.config.overlayBorderWidth
         radius: root.host.config.overlayRounding
         clip: true
@@ -120,8 +132,23 @@ Item {
         Repeater {
             model: root.previewWindows
             delegate: Rectangle {
+                id: winTile
                 required property var modelData
 
+                readonly property int delegateIconPx: {
+                    const w = Math.max(10, Math.round(modelData.width * root.previewScale));
+                    const h = Math.max(8, Math.round(modelData.height * root.previewScale));
+                    return Math.round(Math.min(22, Math.max(14, Math.min(w, h) * 0.32)));
+                }
+
+                readonly property bool showIcon: {
+                    const p = String(modelData.iconPath || "").trim();
+                    if (!p.length)
+                        return false;
+                    const w = Math.max(10, Math.round(modelData.width * root.previewScale));
+                    const h = Math.max(8, Math.round(modelData.height * root.previewScale));
+                    return w >= 36 && h >= 20 && w >= delegateIconPx + 24;
+                }
                 x: root.previewInsetLeft + Math.round(modelData.x * root.previewScale)
                 y: root.headerHeight + root.previewInsetTop + Math.round(modelData.y * root.previewScale)
                 width: Math.max(10, Math.round(modelData.width * root.previewScale))
@@ -159,18 +186,40 @@ Item {
                             0.18
                         )
 
-                Label {
+                RowLayout {
                     anchors.fill: parent
                     anchors.margins: 4
-                    visible: parent.width >= 36 && parent.height >= 18
-                    text: modelData.title
-                    color: root.host.config.overlayTextColor
-                    font.family: root.host.uiFontFamily
-                    font.pixelSize: Math.max(8, root.host.uiFontSize - 4)
-                    wrapMode: Text.Wrap
-                    maximumLineCount: parent.height >= 30 ? 2 : 1
-                    elide: Text.ElideRight
-                    verticalAlignment: Text.AlignVCenter
+                    spacing: Math.max(2, Math.min(6, parent.width / 28))
+
+                    Image {
+                        id: winPrevIcon
+                        visible: winTile.showIcon && status !== Image.Error
+                        asynchronous: true
+                        source: winTile.showIcon ? root._iconSourceFromPath(modelData.iconPath) : ""
+                        opacity: status === Image.Ready ? 1 : 0.35
+                        Layout.preferredWidth: winTile.showIcon ? winTile.delegateIconPx : 0
+                        Layout.preferredHeight: winTile.showIcon ? winTile.delegateIconPx : 0
+                        Layout.maximumWidth: winTile.showIcon ? winTile.delegateIconPx : 0
+                        Layout.maximumHeight: winTile.showIcon ? winTile.delegateIconPx : 0
+                        Layout.alignment: Qt.AlignTop
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        mipmap: true
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        visible: parent.width >= 36 && parent.height >= 18
+                        text: modelData.title
+                        color: root.host.config.overlayTextColor
+                        font.family: root.host.uiFontFamily
+                        font.pixelSize: Math.max(8, root.host.uiFontSize - 4)
+                        wrapMode: Text.Wrap
+                        maximumLineCount: parent.height >= 30 ? 2 : 1
+                        elide: Text.ElideRight
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
             }
         }
@@ -205,7 +254,7 @@ Item {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.margins: 8
-            text: "Workspace " + root.workspaceId
+            text: root.host.config.formatUiText("Workspace") + " " + root.workspaceId
             color: root.host.config.overlayTextColor
             font.family: root.host.uiFontFamily
             font.pixelSize: root.host.uiFontSize
@@ -227,8 +276,10 @@ Item {
             anchors.bottom: parent.bottom
             anchors.margins: root.rightLabelInset
             text: root.previewWindows.length > 0
-                ? root.previewWindows.length + (root.previewWindows.length === 1 ? " window" : " windows")
-                : "No open windows"
+                ? String(root.previewWindows.length) + (root.previewWindows.length === 1
+                    ? " " + root.host.config.formatUiText("window")
+                    : " " + root.host.config.formatUiText("windows"))
+                : root.host.config.formatUiText("No open windows")
             color: root.host.config.mutedTextColor
             font.family: root.host.uiFontFamily
             font.pixelSize: Math.max(10, root.host.uiFontSize - 1)
@@ -237,7 +288,7 @@ Item {
         Label {
             anchors.centerIn: parent
             visible: root.previewWindows.length < 1
-            text: "Empty workspace"
+            text: root.host.config.formatUiText("Empty workspace")
             color: root.host.config.mutedTextColor
             font.family: root.host.uiFontFamily
             font.pixelSize: root.host.uiFontSize

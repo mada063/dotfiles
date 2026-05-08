@@ -18,7 +18,7 @@ RowLayout {
 
     Label {
         text: root.labelText
-        color: root.host.config.textColor
+        color: root.host.config.buttonTextColor
     }
 
     Item { Layout.fillWidth: true }
@@ -29,12 +29,12 @@ RowLayout {
         knobSize: root.knobSize
         checked: root.checked
         rounding: root.host.config.rounding
-        onColor: Qt.rgba(root.host.config.overlayAccentColor.r, root.host.config.overlayAccentColor.g, root.host.config.overlayAccentColor.b, 0.28)
-        offColor: "transparent"
-        onBorderColor: root.host.config.overlayAccentColor
-        offBorderColor: root.host.config.mutedTextColor
-        onKnobColor: root.host.config.overlayAccentColor
-        offKnobColor: root.host.config.textColor
+        onColor: root.host.config.buttonActiveBackgroundColor
+        offColor: root.host.config.buttonBackgroundColor
+        onBorderColor: root.host.config.buttonActiveBorderColor
+        offBorderColor: root.host.config.buttonBorderColor
+        onKnobColor: root.host.config.buttonActiveTextColor
+        offKnobColor: root.host.config.buttonTextColor
         onToggled: root.toggled()
     }
 }

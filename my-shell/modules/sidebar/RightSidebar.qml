@@ -8,7 +8,12 @@ PanelWindow {
     id: root
 
     required property QtObject shell
-    required property QtObject config
+    // Not named "config": PanelWindow reserves/uses `config`; shadowing it breaks bindings (null at runtime).
+    required property QtObject shellConfig
+    required property var anchorScreen
+
+    screen: root.anchorScreen
+    readonly property string myName: root.anchorScreen ? String(root.anchorScreen.name) : ""
 
     anchors {
         top: true
@@ -19,24 +24,28 @@ PanelWindow {
     color: "transparent"
     readonly property real sidebarHiddenOffset: panel.implicitWidth + 8
     property bool sidebarWindowActive: sidebarActive
-    implicitWidth: sidebarWindowActive ? (panel.implicitWidth + 8) : Math.max(1, root.config.sidebarEdgeThresholdPx)
+    implicitWidth: sidebarWindowActive ? (panel.implicitWidth + 8) : Math.max(1, root.shellConfig.sidebarEdgeThresholdPx)
     exclusiveZone: 0
 
-    readonly property bool sidebarActive: root.shell.rightSidebarVisible || root.shell.rightSidebarTriggerHovered || root.shell.rightSidebarOverlayHovered
+    readonly property bool sidebarActive: root.myName.length > 0 && (
+        (root.shell.rightSidebarVisible && root.shell.rightSidebarAnchorName === root.myName)
+        || (root.shell.rightSidebarTriggerHovered && root.shell.rightSidebarAnchorName === root.myName)
+        || (root.shell.rightSidebarOverlayHovered && root.shell.rightSidebarAnchorName === root.myName)
+    )
     property int targetOffset: sidebarActive ? 0 : sidebarHiddenOffset
     property int volumeValue: 50
     property bool volumeMuted: false
     property int brightnessValue: 40
     property bool suppressEdgeTrigger: false
     readonly property int triggerZoneHeight: Math.min(root.height, Math.max(180, Math.min(320, panel.implicitHeight)))
-    readonly property string uiFontFamily: root.config.fontFamily
-    readonly property int uiFontSize: root.config.fontPixelSize
+    readonly property string uiFontFamily: root.shellConfig.fontFamily
+    readonly property int uiFontSize: root.shellConfig.fontPixelSize
 
     function _flippedBars(percent, muted, accentColor) {
         const p = Math.max(0, Math.min(100, Number(percent)));
         const total = 10;
         const on = Math.round((p / 100) * total);
-        const inactive = Qt.rgba(root.config.textColor.r, root.config.textColor.g, root.config.textColor.b, 0.5);
+        const inactive = Qt.rgba(root.shellConfig.textColor.r, root.shellConfig.textColor.g, root.shellConfig.textColor.b, 0.5);
         let out = "";
         for (let i = 1; i <= total; i++) {
             const active = i <= on;
@@ -45,7 +54,7 @@ PanelWindow {
                 if (muted)
                     color = "#6b7280";
                 else
-                    color = i > Math.max(1, total - 3) ? accentColor : root.config.textColor;
+                    color = i > Math.max(1, total - 3) ? accentColor : root.shellConfig.textColor;
             }
             out += "<span style=\"letter-spacing:-2px; color:" + color + ";\">|</span>";
         }
@@ -78,12 +87,20 @@ PanelWindow {
             _applyFontRecursive(node.contentItem);
     }
 
+    function refreshSidebarStates() {
+        if (!volGet.running)
+            volGet.exec({ command: volGet.command });
+        if (!briGet.running)
+            briGet.exec({ command: briGet.command });
+    }
+
     onUiFontFamilyChanged: _applyFontRecursive(root)
     onUiFontSizeChanged: _applyFontRecursive(root)
     onSidebarActiveChanged: {
         if (sidebarActive) {
             sidebarWindowActive = true;
             sidebarHideTimer.stop();
+            refreshSidebarStates();
         } else if (sidebarWindowActive) {
             sidebarHideTimer.restart();
         }
@@ -92,9 +109,10 @@ PanelWindow {
         _applyFontRecursive(root);
         suppressEdgeTrigger = true;
         startupEdgeGuard.start();
+        refreshSidebarStates();
     }
 
-    readonly property int _cardHeight: Math.max(70, Math.min(200, root.config.sidebarSliderHeight))
+    readonly property int _cardHeight: Math.max(70, Math.min(200, root.shellConfig.sidebarSliderHeight))
 
     Rectangle {
         id: panel
@@ -105,11 +123,11 @@ PanelWindow {
             verticalCenter: parent.verticalCenter
         }
         x: root.targetOffset
-        color: root.config.sidebarBackgroundColor
-        opacity: root.config.panelOpacity
-        border.color: root.config.quickSidebarColor
-        border.width: root.config.overlayBorderWidth
-        radius: root.config.sidebarRounding
+        color: root.shellConfig.sidebarBackgroundColor
+        opacity: root.shellConfig.panelOpacity
+        border.color: root.shellConfig.quickSidebarColor
+        border.width: root.shellConfig.overlayBorderWidth
+        radius: root.shellConfig.sidebarRounding
 
         Behavior on x {
             NumberAnimation {
@@ -132,9 +150,9 @@ PanelWindow {
                     implicitWidth: 40
                     implicitHeight: root._cardHeight
                     color: "transparent"
-                    radius: root.config.sidebarRounding
-                    border.width: root.config.buttonBorderWidth
-                    border.color: root.config.quickSidebarColor
+                    radius: root.shellConfig.sidebarRounding
+                    border.width: root.shellConfig.buttonBorderWidth
+                    border.color: root.shellConfig.quickSidebarColor
                     Layout.alignment: Qt.AlignHCenter
                     ColumnLayout {
                         anchors.fill: parent
@@ -143,7 +161,7 @@ PanelWindow {
 
                         Label {
                             text: "VOL"
-                            color: root.config.sidebarTextColor
+                            color: root.shellConfig.sidebarTextColor
                             font.bold: true
                             Layout.alignment: Qt.AlignHCenter
                         }
@@ -155,8 +173,8 @@ PanelWindow {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: root._flippedBars(root.volumeValue, root.volumeMuted, root.config.quickSidebarColor)
-                                color: root.config.sidebarTextColor
+                                text: root._flippedBars(root.volumeValue, root.volumeMuted, root.shellConfig.quickSidebarColor)
+                                color: root.shellConfig.sidebarTextColor
                                 textFormat: Text.RichText
                                 rotation: -90
                                 transformOrigin: Item.Center
@@ -189,9 +207,9 @@ PanelWindow {
                     implicitWidth: 40
                     implicitHeight: root._cardHeight
                     color: "transparent"
-                    radius: root.config.sidebarRounding
-                    border.width: root.config.buttonBorderWidth
-                    border.color: root.config.quickSidebarColor
+                    radius: root.shellConfig.sidebarRounding
+                    border.width: root.shellConfig.buttonBorderWidth
+                    border.color: root.shellConfig.quickSidebarColor
                     Layout.alignment: Qt.AlignHCenter
                     ColumnLayout {
                         anchors.fill: parent
@@ -200,7 +218,7 @@ PanelWindow {
 
                         Label {
                             text: "BRT"
-                            color: root.config.sidebarTextColor
+                            color: root.shellConfig.sidebarTextColor
                             font.bold: true
                             Layout.alignment: Qt.AlignHCenter
                         }
@@ -212,8 +230,8 @@ PanelWindow {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: root._flippedBars(root.brightnessValue, false, root.config.quickSidebarColor)
-                                color: root.config.sidebarTextColor
+                                text: root._flippedBars(root.brightnessValue, false, root.shellConfig.quickSidebarColor)
+                                color: root.shellConfig.sidebarTextColor
                                 textFormat: Text.RichText
                                 rotation: -90
                                 transformOrigin: Item.Center
@@ -266,9 +284,10 @@ PanelWindow {
         hoverEnabled: true
         acceptedButtons: Qt.NoButton
         onEntered: {
-            if (!root.config.sidebarEnabled || root.suppressEdgeTrigger || root.sidebarActive) {
+            if (!root.shellConfig.sidebarEnabled || root.suppressEdgeTrigger || root.sidebarActive) {
                 return;
             }
+            root.shell.rightSidebarAnchorName = root.myName;
             edgeHold.start();
         }
         onExited: {
@@ -294,7 +313,7 @@ PanelWindow {
 
     Timer {
         id: edgeHold
-        interval: root.config.sidebarEdgeHoldMs
+        interval: root.shellConfig.sidebarEdgeHoldMs
         repeat: false
         onTriggered: root.shell.rightSidebarTriggerHovered = true
     }
@@ -315,7 +334,7 @@ PanelWindow {
 
     Timer {
         id: triggerReleaseTimer
-        interval: root.config.hoverReleaseMs
+        interval: root.shellConfig.hoverReleaseMs
         repeat: false
         onTriggered: {
             if (!root.shell.rightSidebarVisible) {
@@ -326,7 +345,7 @@ PanelWindow {
 
     Timer {
         id: overlayReleaseTimer
-        interval: root.config.hoverReleaseMs
+        interval: root.shellConfig.hoverReleaseMs
         repeat: false
         onTriggered: {
             if (!root.shell.rightSidebarVisible) {
@@ -372,28 +391,25 @@ PanelWindow {
     }
 
     Timer {
-        interval: root.config.quickSidebarPollMs
-        running: true
+        interval: root.shellConfig.quickSidebarPollMs
+        running: root.sidebarWindowActive
         repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            volGet.exec({ command: volGet.command });
-            briGet.exec({ command: briGet.command });
-        }
+        triggeredOnStart: false
+        onTriggered: root.refreshSidebarStates()
     }
 
     Timer {
         id: volRefresh
         interval: 140
         repeat: false
-        onTriggered: volGet.exec({ command: volGet.command })
+        onTriggered: root.refreshSidebarStates()
     }
 
     Timer {
         id: briRefresh
         interval: 140
         repeat: false
-        onTriggered: briGet.exec({ command: briGet.command })
+        onTriggered: root.refreshSidebarStates()
     }
 
     Timer {

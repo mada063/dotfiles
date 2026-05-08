@@ -10,6 +10,7 @@ PanelWindow {
 
     required property QtObject shell
     required property QtObject config
+    screen: root.shell.dashboardAnchorScreen || (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
     readonly property bool shown: root.shell.dashboardVisible || root.shell.dashboardTriggerHovered || root.shell.dashboardOverlayHovered
     property bool overlayActive: shown
     property bool overlayPresented: shown
@@ -20,6 +21,8 @@ PanelWindow {
             overlayPresented = false;
             dashboardHideTimer.stop();
             dashboardPresentTimer.restart();
+            _scheduleDashboardFonts();
+            root.maybeRefreshWeatherOnDashboardOpen();
         } else if (overlayActive) {
             overlayPresented = false;
             dashboardHideTimer.restart();
@@ -43,8 +46,25 @@ PanelWindow {
     color: "transparent"
     readonly property int panelWidth: root.width > 0 ? Math.min(root.width - 40, Math.max(860, Math.round(root.width * 0.74))) : 920
     readonly property int basePanelHeight: Math.max(560, Math.min(760, Math.round(root.panelWidth * 0.64)))
-    readonly property int overviewPanelHeight: Math.max(420, Math.min(760, overviewTab.implicitHeight + dashboardTabs.implicitHeight + 40))
-    readonly property int panelHeight: dashboardTabs.currentIndex === 0 ? overviewPanelHeight : basePanelHeight
+    // Reported by DashboardOverview from laid-out content; 0 = use fallback.
+    property int overviewContentImplicit: 0
+    // Tab bar + column margins in dashboard panel (matches TabButton ~30 and anchors margins).
+    readonly property int _overviewPanelChrome: 12 + 12 + 8 + 30 + 8
+    readonly property int overviewPanelHeightFallback: Math.max(580, Math.min(780, Math.round(root.panelWidth * 0.64)))
+    readonly property int overviewPanelHeight: {
+        if (root.overviewContentImplicit <= 0)
+            return root.overviewPanelHeightFallback;
+        return Math.min(820, Math.max(400, root.overviewContentImplicit + root._overviewPanelChrome));
+    }
+    // Focus + Media: compact; other non-overview tabs use base height (overview is tallest content).
+    readonly property int compactTabPanelHeight: Math.max(220, Math.min(320, Math.round(root.panelWidth * 0.34)))
+    readonly property int panelHeight: {
+        if (root.currentTabId === "overview")
+            return root.overviewPanelHeight;
+        if (root.currentTabId === "focus" || root.currentTabId === "media")
+            return root.compactTabPanelHeight;
+        return root.basePanelHeight;
+    }
     visible: root.config.dashboardEnabled && root.overlayActive
     implicitHeight: root.panelHeight
     exclusiveZone: 0
@@ -52,11 +72,19 @@ PanelWindow {
     property string avatarText: "QS"
     property string weatherTemp: "-"
     property string weatherSummary: "-"
+    property string weatherIconEmoji: "-"
+    /** ms since epoch of last successful wttr fetch (0 = never). */
+    property real weatherLastFetchMs: 0
     property string osInfo: "-"
     property string wmInfo: "WM: " + root.shell.detectedWindowManagerName
     property string uptimeInfo: "-"
     property string mediaInfo: "-"
     property string mediaState: "-"
+    property string mediaArtUrl: ""
+    property string mediaAlbum: "-"
+    // MPRIS position / length in seconds (length 0 = unknown; position updated by playerctl)
+    property real mediaPositionSec: 0
+    property real mediaLengthSec: 0
     property string timeHour: "--"
     property string timeMinute: "--"
     property string timeSecond: "--"
@@ -117,12 +145,33 @@ PanelWindow {
     readonly property int fastPollMs: Math.max(300, root.config.dashboardFastPollMs)
     readonly property int mediumPollMs: Math.max(1000, root.config.dashboardMediumPollMs)
     readonly property int slowPollMs: Math.max(3000, root.config.dashboardSlowPollMs)
+    /** Minimum time between wttr.in fetches (successful runs set weatherLastFetchMs). */
+    readonly property int weatherMinRefreshIntervalMs: 30 * 60 * 1000
     readonly property string uiFontFamily: root.config.fontFamily
     readonly property int uiFontSize: root.config.fontPixelSize
     readonly property color dashboardAccent: root.config.dashboardColor
     readonly property color dashboardTextColor: root.config.dashboardTextColor
     readonly property color dashboardBackgroundColor: root.config.dashboardBackgroundColor
     readonly property int dashboardSurfaceRounding: root.config.dashboardRounding
+    readonly property var allDashboardTabs: [
+        { id: "overview", label: "Dashboard" },
+        { id: "performance", label: "Performance" },
+        { id: "focus", label: "Focus" },
+        { id: "media", label: "Media" },
+        { id: "calendar", label: "Calendar" },
+        { id: "updates", label: "Updates" }
+    ]
+    readonly property var visibleDashboardTabs: {
+        const visibility = root.config.dashboardTabVisibility || {};
+        const tabs = [];
+        for (let i = 0; i < root.allDashboardTabs.length; i++) {
+            const tab = root.allDashboardTabs[i];
+            if (visibility[String(tab.id)] !== false)
+                tabs.push(tab);
+        }
+        return tabs.length > 0 ? tabs : [root.allDashboardTabs[0]];
+    }
+    property string currentTabId: "overview"
     Behavior on cpuUsage { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     Behavior on gpuUsage { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     Behavior on ramPercent { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -146,6 +195,8 @@ PanelWindow {
             _applyFontRecursive(kids[i]);
         if (node.contentItem)
             _applyFontRecursive(node.contentItem);
+        if (node.item) // Loader (tab content, etc.): created after first font pass
+            _applyFontRecursive(node.item);
     }
 
     function _formatBytes(bytes) {
@@ -182,6 +233,24 @@ PanelWindow {
             calendarYear = now.getFullYear();
             _rebuildCalendar();
         }
+    }
+
+    function refreshMediaState() {
+        if (!mediaProc.running)
+            mediaProc.exec({ command: mediaProc.command });
+    }
+
+    function maybeRefreshWeatherIfStale() {
+        if (weatherBriefProc.running)
+            return;
+        const now = Date.now();
+        if (root.weatherLastFetchMs > 0 && (now - root.weatherLastFetchMs) < root.weatherMinRefreshIntervalMs)
+            return;
+        weatherBriefProc.exec({ command: weatherBriefProc.command });
+    }
+
+    function maybeRefreshWeatherOnDashboardOpen() {
+        root.maybeRefreshWeatherIfStale();
     }
 
     property int calendarMonth: -1
@@ -226,12 +295,38 @@ PanelWindow {
         calendarCells = cells;
     }
 
-    onUiFontFamilyChanged: _applyFontRecursive(root)
-    onUiFontSizeChanged: _applyFontRecursive(root)
+    onUiFontFamilyChanged: _scheduleDashboardFonts()
+    onUiFontSizeChanged: _scheduleDashboardFonts()
+    onVisibleDashboardTabsChanged: {
+        let found = false;
+        for (let i = 0; i < visibleDashboardTabs.length; i++) {
+            if (visibleDashboardTabs[i].id === currentTabId) {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            currentTabId = visibleDashboardTabs[0].id;
+        _scheduleDashboardFonts();
+    }
+    function _scheduleDashboardFonts() {
+        dashboardFontApplyTimer.restart();
+    }
+
+    Timer {
+        id: dashboardFontApplyTimer
+        interval: 0
+        repeat: false
+        onTriggered: _applyFontRecursive(dashboardPanel)
+    }
+
+    onCurrentTabIdChanged: _scheduleDashboardFonts()
+
     Component.onCompleted: {
         _updateClock();
         _rebuildCalendar();
-        _applyFontRecursive(root);
+        _scheduleDashboardFonts();
+        currentTabId = visibleDashboardTabs[0].id;
     }
 
     function closeDashboard() {
@@ -245,104 +340,129 @@ PanelWindow {
         onClicked: root.closeDashboard()
     }
 
-    Rectangle {
-        id: dashboardPanel
-        readonly property real hiddenY: -(root.panelHeight + 8)
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: root.panelWidth
-        height: root.panelHeight
-        y: root.overlayPresented ? 0 : hiddenY
-        color: root.dashboardBackgroundColor
-        opacity: root.config.panelOpacity
-        border.color: root.dashboardAccent
-        border.width: root.config.overlayBorderWidth
-        radius: root.dashboardSurfaceRounding
-        clip: true
-        layer.enabled: true
+    Item {
+    id: dashboardContainer
+    anchors.horizontalCenter: parent.horizontalCenter
+    width: root.panelWidth
+    height: root.panelHeight   // container follows height, but NOT animated
 
-        MouseArea {
-            anchors.fill: parent
+    readonly property real hiddenY: -(height + 8)
+    y: root.overlayPresented ? 0 : hiddenY
+
+    Behavior on y {
+        NumberAnimation {
+            duration: 240
+            easing.type: Easing.OutCubic
         }
+    }
 
-        Behavior on y {
-            NumberAnimation {
-                duration: 240
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        ColumnLayout {
+        Rectangle {
+            id: dashboardPanel
             anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            anchors.bottomMargin: 12
-            anchors.topMargin: 0
-            spacing: 8
 
-            TabBar {
-                id: dashboardTabs
-                Layout.fillWidth: true
-                currentIndex: 0
+            // ❗ REMOVE y animation from here
+            // ❗ REMOVE hiddenY from here
+
+            color: root.dashboardBackgroundColor
+            opacity: root.config.panelOpacity
+            border.color: root.dashboardAccent
+            border.width: root.config.overlayBorderWidth
+            radius: root.dashboardSurfaceRounding
+            clip: true
+            layer.enabled: true
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                anchors.bottomMargin: 12
+                anchors.topMargin: 12
                 spacing: 8
-                onCurrentIndexChanged: {
-                    if (currentIndex === 1 && performanceTab.networkCanvas && root.netDownHistory.length > 1)
-                        performanceTab.networkCanvas.requestPaint();
-                }
-                background: Rectangle {
-                    color: "transparent"
-                    border.width: root.config.buttonBorderWidth
-                    border.color: root.dashboardAccent
-                    radius: Math.max(0, root.dashboardSurfaceRounding - 2)
-                }
-                TabButton {
-                    id: dashboardTabButton
-                    text: "Dashboard"
-                    implicitHeight: 30
-                    implicitWidth: 128
+
+                TabBar {
+                    id: dashboardTabs
+                    Layout.fillWidth: true
+                    spacing: 8
                     background: Rectangle {
-                        radius: Math.max(0, root.config.rounding - 2)
-                        color: dashboardTabButton.checked ? Qt.rgba(root.dashboardAccent.r, root.dashboardAccent.g, root.dashboardAccent.b, 0.18) : "transparent"
+                        color: "transparent"
                         border.width: root.config.buttonBorderWidth
-                        border.color: dashboardTabButton.checked ? root.dashboardAccent : root.config.overlayAccentColor
+                        border.color: root.dashboardAccent
+                        radius: Math.max(0, root.dashboardSurfaceRounding - 2)
                     }
-                    contentItem: Text {
-                        text: dashboardTabButton.text
-                        color: dashboardTabButton.checked ? root.dashboardAccent : root.dashboardTextColor
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        font.family: root.uiFontFamily
-                        font.pixelSize: root.uiFontSize
-                        font.bold: dashboardTabButton.checked
+                    Repeater {
+                        model: root.visibleDashboardTabs
+                        delegate: TabButton {
+                            id: dynamicTabButton
+                            required property var modelData
+                            hoverEnabled: true
+                            text: root.config.formatUiText(String(modelData.label || ""))
+                            implicitHeight: 30
+                            implicitWidth: 128
+                            checked: root.currentTabId === String(modelData.id || "")
+                            onClicked: root.currentTabId = String(modelData.id || "overview")
+                            background: Rectangle {
+                                radius: Math.max(0, root.config.rounding - 2)
+                                color: dynamicTabButton.checked
+                                    ? Qt.rgba(root.dashboardAccent.r, root.dashboardAccent.g, root.dashboardAccent.b, 0.18)
+                                    : (dynamicTabButton.hovered
+                                        ? Qt.rgba(root.dashboardAccent.r, root.dashboardAccent.g, root.dashboardAccent.b, 0.10)
+                                        : "transparent")
+                                border.width: root.config.buttonBorderWidth
+                                border.color: (dynamicTabButton.checked || dynamicTabButton.hovered)
+                                    ? root.dashboardAccent
+                                    : root.config.overlayAccentColor
+                            }
+                            contentItem: Text {
+                                text: dynamicTabButton.text
+                                color: (dynamicTabButton.checked || dynamicTabButton.hovered) ? root.dashboardAccent : root.dashboardTextColor
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.family: root.uiFontFamily
+                                font.pixelSize: root.uiFontSize
+                                font.bold: dynamicTabButton.checked
+                            }
+                        }
                     }
                 }
-                TabButton {
-                    id: performanceTabButton
-                    text: "Performance"
-                    implicitHeight: 30
-                    implicitWidth: 128
-                    background: Rectangle {
-                        radius: Math.max(0, root.config.rounding - 2)
-                        color: performanceTabButton.checked ? Qt.rgba(root.dashboardAccent.r, root.dashboardAccent.g, root.dashboardAccent.b, 0.18) : "transparent"
-                        border.width: root.config.buttonBorderWidth
-                        border.color: performanceTabButton.checked ? root.dashboardAccent : root.config.overlayAccentColor
+
+                StackLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    currentIndex: {
+                        for (let i = 0; i < root.visibleDashboardTabs.length; i++) {
+                            if (String(root.visibleDashboardTabs[i].id) === String(root.currentTabId))
+                                return i;
+                        }
+                        return 0;
                     }
-                    contentItem: Text {
-                        text: performanceTabButton.text
-                        color: performanceTabButton.checked ? root.dashboardAccent : root.dashboardTextColor
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        font.family: root.uiFontFamily
-                        font.pixelSize: root.uiFontSize
-                        font.bold: performanceTabButton.checked
+
+                    Repeater {
+                        model: root.visibleDashboardTabs
+                        delegate: Loader {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            sourceComponent: {
+                                const tabId = String(modelData.id || "");
+                                if (tabId === "performance")
+                                    return performanceTabComponent;
+                                if (tabId === "focus")
+                                    return focusTabComponent;
+                                if (tabId === "media")
+                                    return mediaTabComponent;
+                                if (tabId === "calendar")
+                                    return calendarTabComponent;
+                                if (tabId === "updates")
+                                    return updatesTabComponent;
+                                return overviewTabComponent;
+                            }
+                        }
                     }
                 }
             }
 
-            StackLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                currentIndex: dashboardTabs.currentIndex
-
+            Component {
+                id: overviewTabComponent
                 DashboardOverview {
                     id: overviewTab
                     dashboard: root
@@ -350,45 +470,80 @@ PanelWindow {
                     mediaToggleProc: mediaToggle
                     mediaNextProc: mediaNext
                 }
+            }
 
+            Component {
+                id: performanceTabComponent
                 DashboardPerformance {
                     id: performanceTab
                     dashboard: root
                 }
             }
-        }
 
-        HoverHandler {
-            onHoveredChanged: {
-                if (hovered) {
-                    overlayReleaseTimer.stop();
-                    root.shell.dashboardOverlayHovered = true;
-                } else {
-                    overlayReleaseTimer.start();
+            Component {
+                id: focusTabComponent
+                DashboardFocus {
+                    dashboard: root
+                }
+            }
+
+            Component {
+                id: mediaTabComponent
+                DashboardMedia {
+                    dashboard: root
+                    mediaPrevProc: mediaPrev
+                    mediaToggleProc: mediaToggle
+                    mediaNextProc: mediaNext
+                }
+            }
+
+            Component {
+                id: calendarTabComponent
+                DashboardCalendar {
+                    dashboard: root
+                }
+            }
+
+            Component {
+                id: updatesTabComponent
+                DashboardUpdates {
+                    dashboard: root
+                }
+            }
+
+            HoverHandler {
+                onHoveredChanged: {
+                    if (hovered) {
+                        overlayReleaseTimer.stop();
+                        root.shell.dashboardOverlayHovered = true;
+                    } else {
+                        overlayReleaseTimer.start();
+                    }
                 }
             }
         }
     }
 
     Process {
-        id: weatherTempProc
-        command: ["bash", "-lc", "if command -v curl >/dev/null 2>&1; then curl -fsS 'https://wttr.in/?format=%t' 2>/dev/null; else echo '-'; fi"]
+        id: weatherBriefProc
+        command: ["bash", "-lc", "if command -v curl >/dev/null 2>&1; then curl -fsS --compressed 'https://wttr.in/?format=%t|%c|%C' 2>/dev/null; fi"]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: {
-                const value = String(text).trim().replace(/°[CF]/gi, "").replace(/^\+/, "");
-                if (value)
-                    root.weatherTemp = value;
+                const raw = String(text || "").trim().replace(/\x1b\[[0-9;]*m/g, "");
+                if (!raw.length)
+                    return;
+                const parts = raw.split("|").map(function(p) { return String(p || "").trim(); });
+                if (parts.length < 3)
+                    return;
+                const tp = parts[0].replace(/°[CF]/gi, "").replace(/^\+/, "").trim();
+                if (tp.length > 16 || !/\d/.test(tp))
+                    return;
+                root.weatherTemp = tp;
+                root.weatherIconEmoji = parts[1].trim().length ? parts[1].trim() : "-";
+                root.weatherSummary = parts[2].length ? parts[2] : "-";
+                root.weatherLastFetchMs = Date.now();
             }
-        }
-    }
-
-    Process {
-        id: weatherSummaryProc
-        command: ["bash", "-lc", "if command -v curl >/dev/null 2>&1; then curl -fsS 'https://wttr.in/?format=%C' 2>/dev/null; else echo '-'; fi"]
-        stdout: StdioCollector {
-            waitForEnd: true
-            onStreamFinished: root.weatherSummary = String(text).trim() || "-"
         }
     }
 
@@ -533,19 +688,29 @@ PanelWindow {
 
     Process {
         id: mediaProc
-        command: ["bash", "-lc", "if command -v playerctl >/dev/null 2>&1; then echo \"$(playerctl status 2>/dev/null || echo Stopped)|$(playerctl metadata --format '{{artist}} - {{title}}' 2>/dev/null || echo '-')\"; else echo 'Stopped|-'; fi"]
+        command: ["bash", "-lc", "if command -v playerctl >/dev/null 2>&1; then st=$(playerctl status 2>/dev/null || echo Stopped); meta=$(playerctl metadata --format '{{artist}} - {{title}}' 2>/dev/null | head -n1 | head -c 500); [ -z \"$meta\" ] && meta='-'; art=$(playerctl metadata mpris:artUrl 2>/dev/null | head -n1 | head -c 2000); alb=$(playerctl metadata album 2>/dev/null | head -n1 | head -c 400); pos=$(playerctl position 2>/dev/null | head -n1); [ -z \"$pos\" ] && pos=0; lu=$(playerctl metadata mpris:length 2>/dev/null | tr -d ' \\n\\r'); len=0; if [ -n \"$lu\" ]; then len=$(awk -v m=\"$lu\" 'BEGIN{v=m+0; if(v>0) printf \"%.2f\", v/1e6; else print 0}'); fi; printf '%s\\n' \"$st\" \"$meta\" \"$art\" \"${alb:-}\" \"$pos\" \"$len\"; else printf '%s\\n' 'Stopped' '-' '' '' 0 0; fi"]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: {
-                const value = String(text).trim();
-                const idx = value.indexOf("|");
-                if (idx > -1) {
-                    root.mediaState = value.slice(0, idx) || "Stopped";
-                    root.mediaInfo = value.slice(idx + 1) || "-";
-                } else {
-                    root.mediaState = "Stopped";
-                    root.mediaInfo = value || "-";
-                }
+                const lines = String(text).trim().split(/\r?\n/);
+                const st = String(lines[0] || "Stopped").trim() || "Stopped";
+                const meta = String(lines[1] || "-").trim() || "-";
+                let artU = String(lines[2] || "").trim();
+                if (artU.length > 0
+                    && artU.indexOf("file:") !== 0
+                    && artU.indexOf("http://") !== 0
+                    && artU.indexOf("https://") !== 0
+                    && artU.charAt(0) === "/")
+                    artU = "file://" + artU;
+                const alb = String(lines[3] || "-").trim() || "-";
+                const pos = Number(lines[4]);
+                const len = Number(lines[5]);
+                root.mediaState = st;
+                root.mediaInfo = meta;
+                root.mediaArtUrl = artU;
+                root.mediaAlbum = alb.length > 0 ? alb : "-";
+                root.mediaPositionSec = Number.isFinite(pos) && pos >= 0 ? pos : 0;
+                root.mediaLengthSec = Number.isFinite(len) && len > 0.01 ? len : 0;
             }
         }
     }
@@ -575,8 +740,6 @@ PanelWindow {
                     root.netUpText = root._formatRate(upRate);
                     root.netDownHistory = root._pushHistory(root.netDownHistory, downRate);
                     root.netUpHistory = root._pushHistory(root.netUpHistory, upRate);
-                    if (root.visible && dashboardTabs.currentIndex === 1 && performanceTab.networkCanvas)
-                        performanceTab.networkCanvas.requestPaint();
                 }
 
                 root.prevRxBytes = rx;
@@ -637,7 +800,8 @@ PanelWindow {
 
     Timer {
         interval: root.fastPollMs
-        running: root.visible && dashboardTabs.currentIndex === 1
+        // Poll whenever dashboard is open so perf graph history fills and rates stay meaningful when switching tabs.
+        running: root.visible
         repeat: true
         triggeredOnStart: true
         onTriggered: {
@@ -665,10 +829,8 @@ PanelWindow {
         repeat: true
         triggeredOnStart: true
         onTriggered: {
-            if (!weatherTempProc.running)
-                weatherTempProc.exec({ command: weatherTempProc.command });
-            if (!weatherSummaryProc.running)
-                weatherSummaryProc.exec({ command: weatherSummaryProc.command });
+            if (!weatherBriefProc.running)
+                root.maybeRefreshWeatherIfStale();
             if (!avatarProc.running)
                 avatarProc.exec({ command: avatarProc.command });
             if (!osProc.running)

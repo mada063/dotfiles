@@ -41,6 +41,7 @@ Item {
     property var wifiNetworks: []
     property var btDevices: []
     property var activeWorkspaceIds: [1]
+    property var occupiedWorkspaceIds: []
     property int focusedWorkspaceId: 1
     property var workspaceInfos: []
     property var workspaceMonitors: []
@@ -155,8 +156,13 @@ Item {
         }
     }
 
-    Process { id: wsClientsProc
-        command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl clients -j; else echo '[]'; fi"]
+    Process {
+        id: wsClientsProc
+        command: [
+            "bash",
+            "-lc",
+            "(command -v python3 >/dev/null 2>&1 && python3 '" + root._shellQuoteSingle(Quickshell.shellDir + "/scripts/hyprland-clients-icons.py") + "') || (command -v hyprctl >/dev/null 2>&1 && hyprctl clients -j || echo '[]')"
+        ]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: {
@@ -168,6 +174,7 @@ Item {
                             title: String(client.title || "").trim(),
                             className: String(client.class || "").trim(),
                             initialClass: String(client.initialClass || "").trim(),
+                            iconPath: String(client.iconPath || "").trim(),
                             address: String(client.address || "").trim(),
                             floating: Boolean(client.floating),
                             fullscreen: Boolean(client.fullscreen),
@@ -178,8 +185,20 @@ Item {
                             height: Array.isArray(client.size) ? Math.max(1, Number(client.size[1]) || 0) : 1
                         })).filter(client => client.workspaceId > 0)
                         : [];
+                    const occupied = {};
+                    for (let i = 0; i < root.workspaceClients.length; i++) {
+                        const wsId = Number(root.workspaceClients[i].workspaceId) || 0;
+                        if (wsId > 0)
+                            occupied[wsId] = true;
+                    }
+                    let occupiedIds = [];
+                    for (const wsKey in occupied)
+                        occupiedIds.push(Number(wsKey));
+                    occupiedIds.sort((a, b) => a - b);
+                    root.occupiedWorkspaceIds = occupiedIds;
                 } catch (e) {
                     root.workspaceClients = [];
+                    root.occupiedWorkspaceIds = [];
                 }
             }
         }

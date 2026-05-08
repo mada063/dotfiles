@@ -17,7 +17,7 @@ PanelWindow {
     property bool popupVisible: false
     property int shownCount: 0
     property int _toastSeq: 0
-    readonly property int baseBottomGap: Math.max(10, quickSettingsTriggerHeight + 8)
+    readonly property int baseBottomGap: 24
     readonly property string uiFontFamily: root.config.fontFamily
     readonly property int uiFontSize: root.config.fontPixelSize
 
@@ -26,7 +26,7 @@ PanelWindow {
         bottom: true
     }
     margins {
-        right: 8
+        right: 0
         bottom: root.quickSettingsOpen
             ? (Math.max(0, root.quickSettingsHeight) + 8)
             : root.baseBottomGap
@@ -35,7 +35,7 @@ PanelWindow {
     color: "transparent"
     visible: (root.popupVisible || popupContent.opacity > 0.01) && !root.suppressPopup && root.notifications.length > 0
     implicitWidth: root.overlayWidth
-    implicitHeight: popupContent.implicitHeight + 8
+    implicitHeight: popupContent.implicitHeight
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
@@ -133,8 +133,9 @@ PanelWindow {
         implicitHeight: popupColumn.implicitHeight + 14
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        color: root.config.overlayBackgroundColor
-        
+        color: root.config.quickSettingsNotificationPopupBackgroundColor
+        border.color: root.config.quickSettingsNotificationPopupBorderColor
+        border.width: root.config.quickSettingsNotificationPopupBorderWidth
         radius: root.config.overlayRounding
         opacity: root.popupVisible ? root.config.panelOpacity : 0
         y: root.popupVisible ? 0 : 24
@@ -159,8 +160,10 @@ PanelWindow {
                     required property var model
                     readonly property int toastId: Number(model.idNum || 0)
                     Layout.fillWidth: true
-                    implicitHeight: notifRow.implicitHeight + 10
-                    color: Qt.rgba(root.config.overlayTextColor.r, root.config.overlayTextColor.g, root.config.overlayTextColor.b, 0.035)
+                    implicitHeight: notifRow.implicitHeight + root.config.quickSettingsNotificationHeightBoost
+                    color: root.config.quickSettingsNotificationBackgroundColor
+                    border.color: root.config.quickSettingsNotificationBorderColor
+                    border.width: 1
                     radius: Math.max(0, root.config.overlayRounding - 4)
                     opacity: model.fading ? 0 : 1
 
@@ -171,7 +174,7 @@ PanelWindow {
                     RowLayout {
                         id: notifRow
                         anchors.fill: parent
-                        anchors.margins: 6
+                        anchors.margins: root.config.quickSettingsNotificationPadding + 3
                         spacing: 8
 
                         ColumnLayout {
@@ -200,7 +203,7 @@ PanelWindow {
                             Label {
                                 text: String(model.body || "")
                                 visible: text.length > 0
-                                color: root.config.overlayTextColor
+                                color: root.config.quickSettingsNotificationTextColor
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                                 font.family: root.uiFontFamily

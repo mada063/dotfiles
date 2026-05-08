@@ -1,0 +1,102 @@
+{
+  "id": "slate-glow",
+  "name": "Slate Glow",
+  "themeMode": "dark",
+  "general": {
+    "accentColor": "#6AA9FF",
+    "borderColor": "#6AA9FF",
+    "backgroundColor": "#0F141D",
+    "textColor": "#CFE0FF",
+    "panelColor": "#1A2433",
+    "mutedTextColor": "#8EA3C2",
+    "rounding": 8,
+    "borderWidth": 1,
+    "buttonBorderWidth": 1,
+    "overlayBorderWidth": 1,
+    "panelOpacity": 0.96,
+    "overlayDimOpacity": 0.4
+  },
+  "components": {
+    "bar": {
+      "backgroundColor": "#1A2433",
+      "accentColor": "#6AA9FF",
+      "textColor": "#CFE0FF",
+      "rounding": 8
+    },
+    "workspace": {
+      "backgroundColor": "#1A2433",
+      "accentColor": "#6AA9FF",
+      "textColor": "#CFE0FF",
+      "activeTextColor": "#0F141D",
+      "visualizationBorderColor": "#6AA9FF",
+      "visualizationBackgroundColor": "#1A2433",
+      "rounding": 8
+    },
+    "dashboard": {
+      "backgroundColor": "#1A2433",
+      "accentColor": "#6AA9FF",
+      "textColor": "#CFE0FF",
+      "weatherAccentColor": "#8CC0FF",
+      "weatherTextColor": "#DCE8FF",
+      "systemAccentColor": "#6AA9FF",
+      "clockHourColor": "#8CC0FF",
+      "clockMinuteColor": "#CFE0FF",
+      "clockSecondColor": "#8EA3C2",
+      "calendarWeekendColor": "#8EA3C2",
+      "calendarActiveColor": "#6AA9FF",
+      "usageBarBackgroundColor": "#8EA3C2",
+      "wifiDownColor": "#6AA9FF",
+      "wifiUpColor": "#7CD6C2",
+      "batteryPerformanceColor": "#6AA9FF",
+      "ramUsageColor": "#CFE0FF",
+      "diskUsageColor": "#8EA3C2",
+      "cpuColor": "#6AA9FF",
+      "gpuColor": "#8CC0FF",
+      "rounding": 8
+    },
+    "sidebar": {
+      "backgroundColor": "#1A2433",
+      "accentColor": "#6AA9FF",
+      "textColor": "#CFE0FF",
+      "rounding": 8
+    },
+    "overlay": {
+      "backgroundColor": "#1A2433",
+      "accentColor": "#6AA9FF",
+      "textColor": "#CFE0FF",
+      "dateColor": "#CFE0FF",
+      "dateFormat": "%a %d %b",
+      "timeFormat": "%H:%M",
+      "dateTimeFormat": "date-time",
+      "buttonTextColor": "#CFE0FF",
+      "buttonBorderColor": "#8EA3C2",
+      "buttonBackgroundColor": "#1A2433",
+      "buttonActiveTextColor": "#0F141D",
+      "buttonActiveBorderColor": "#6AA9FF",
+      "buttonActiveBackgroundColor": "#6AA9FF",
+      "rounding": 8
+    },
+    "visualization": {
+      "backgroundColor": "#1A2433",
+      "accentColor": "#6AA9FF",
+      "textColor": "#CFE0FF",
+      "rounding": 8
+    },
+    "settings": {
+      "backgroundColor": "#1A2433",
+      "accentColor": "#6AA9FF",
+      "textColor": "#CFE0FF",
+      "notificationTextColor": "#CFE0FF",
+      "notificationBorderColor": "#8EA3C2",
+      "notificationBackgroundColor": "#1A2433",
+      "notificationPadding": 10,
+      "activeSettingTextColor": "#0F141D",
+      "activeSettingBorderColor": "#6AA9FF",
+      "activeSettingBackgroundColor": "#6AA9FF",
+      "settingTextColor": "#CFE0FF",
+      "settingBorderColor": "#8EA3C2",
+      "settingBackgroundColor": "#1A2433",
+      "rounding": 8
+    }
+  }
+}

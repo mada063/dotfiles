@@ -60,6 +60,7 @@ PanelWindow {
     property alias wifiNetworks: barState.wifiNetworks
     property alias btDevices: barState.btDevices
     property alias activeWorkspaceIds: barState.activeWorkspaceIds
+    property alias occupiedWorkspaceIds: barState.occupiedWorkspaceIds
     property alias focusedWorkspaceId: barState.focusedWorkspaceId
     readonly property var workspaceInfos: barState.workspaceInfos
     readonly property var workspaceMonitors: barState.workspaceMonitors
@@ -84,17 +85,138 @@ PanelWindow {
 
     readonly property string barMonitorName: root.screen ? root.screen.name : ""
     readonly property var filteredWorkspaceIds: {
+        if (root.config.workspaceShowAllScreens)
+            return occupiedWorkspaceIds;
         const name = barMonitorName;
         if (!name.length)
-            return activeWorkspaceIds;
+            return occupiedWorkspaceIds;
         const infos = workspaceInfos;
-        return activeWorkspaceIds.filter(function(id) {
+        return occupiedWorkspaceIds.filter(function(id) {
             for (let i = 0; i < infos.length; i++) {
                 if (Number(infos[i].id) === Number(id))
                     return String(infos[i].monitorName || "") === name;
             }
-            return true;
+            return false;
         });
+    }
+    readonly property var visibleWorkspaceIds: _visibleWorkspaceIds(filteredWorkspaceIds)
+    function _visibleWorkspaceIds(ids) {
+        const activeIds = ids || [];
+        const count = Math.max(1, Number(root.config.workspaceVisibleCount) || 8);
+
+        let withApps = [];
+        let seen = {};
+        let localActive = {};
+        for (let i = 0; i < activeIds.length; i++) {
+            const wsId = Number(activeIds[i]);
+            if (wsId < 1 || wsId > count)
+                continue;
+            localActive[wsId] = true;
+            if (seen[wsId])
+                continue;
+            if (root._workspaceIsActive(wsId)) {
+                withApps.push(wsId);
+                seen[wsId] = true;
+            }
+        }
+
+        let blocked = {};
+        if (!root.config.workspaceShowAllScreens) {
+            const globalActive = root.occupiedWorkspaceIds || [];
+            for (let i = 0; i < globalActive.length; i++) {
+                const wsId = Number(globalActive[i]);
+                if (wsId >= 1 && wsId <= count && !localActive[wsId])
+                    blocked[wsId] = true;
+            }
+        }
+
+        let rest = [];
+        for (let wsId = 1; wsId <= count; wsId++) {
+            if (seen[wsId] || blocked[wsId])
+                continue;
+            rest.push(wsId);
+        }
+
+        return withApps.concat(rest).slice(0, count);
+    }
+    function _workspaceOnCurrentScreen(workspaceId) {
+        const id = Number(workspaceId);
+        const name = String(barMonitorName || "");
+        const infos = workspaceInfos || [];
+        if (!name.length)
+            return false;
+        for (let i = 0; i < infos.length; i++) {
+            if (Number(infos[i].id) === id)
+                return String(infos[i].monitorName || "") === name;
+        }
+        return false;
+    }
+    function _workspaceIsActive(workspaceId) {
+        const id = Number(workspaceId);
+        const active = root.occupiedWorkspaceIds || [];
+        for (let i = 0; i < active.length; i++) {
+            if (Number(active[i]) === id)
+                return true;
+        }
+        return false;
+    }
+    function _workspaceClientCount(workspaceId) {
+        let count = 0;
+        for (let i = 0; i < workspaceClients.length; i++) {
+            if (Number(workspaceClients[i].workspaceId) === Number(workspaceId))
+                count += 1;
+        }
+        return count;
+    }
+    function _workspaceMonitorName(workspaceId) {
+        const id = Number(workspaceId);
+        const infos = workspaceInfos || [];
+        for (let i = 0; i < infos.length; i++) {
+            if (Number(infos[i].id) === id)
+                return String(infos[i].monitorName || "");
+        }
+        return "";
+    }
+    function _workspaceGroups(ids) {
+        const list = ids || [];
+        return [{ monitorName: barMonitorName, ids: list }];
+    }
+    function _workspaceClientIcons(workspaceId) {
+        let out = [];
+        const maxIcons = Math.max(0, Number(root.config.workspaceMaxIcons) || 1);
+        if (maxIcons < 1)
+            return out;
+        for (let i = 0; i < workspaceClients.length; i++) {
+            const client = workspaceClients[i];
+            if (Number(client.workspaceId) === Number(workspaceId) && String(client.iconPath || "").length > 0)
+                out.push(String(client.iconPath));
+            if (out.length >= maxIcons)
+                break;
+        }
+        return out;
+    }
+    function _iconSource(path) {
+        const p = String(path || "").trim();
+        if (!p.length)
+            return "";
+        if (p.indexOf("file://") === 0 || p.indexOf("qrc:/") === 0 || p.indexOf("image://") === 0)
+            return p;
+        if (p.charAt(0) === "/")
+            return "file://" + p;
+        return p;
+    }
+    function _workspaceChipWidth(workspaceId) {
+        const wsText = String(Number(workspaceId) || workspaceId);
+        const digits = Math.max(1, wsText.length);
+        const labelWidth = Math.ceil(digits * (root.uiFontSize * 0.62)) + 8;
+        if (!root.config.workspaceShowWindowIcons)
+            return Math.max(24, labelWidth + 10);
+        const icons = _workspaceClientIcons(workspaceId);
+        const iconCount = icons.length;
+        const hasDot = iconCount < 1 && _workspaceClientCount(workspaceId) > 0;
+        const iconsWidth = iconCount > 0 ? (iconCount * 12) + Math.max(0, iconCount - 1) : 0;
+        const dotWidth = hasDot ? 6 : 0;
+        return Math.max(30, labelWidth + 14 + iconsWidth + dotWidth);
     }
 
     BarState.BarSensorState {
@@ -102,7 +224,7 @@ PanelWindow {
         config: root.config
         visible: root.visible
         includeLocks: true
-        dateCommand: "date '+%a %d %b %H:%M'"
+        dateCommand: root._dateCommand()
     }
 
     FontMetrics {
@@ -218,6 +340,19 @@ PanelWindow {
 
     function _toggleKnobRadius(height) {
         return Math.min(Math.max(0, root.config.rounding - 3), height / 2);
+    }
+
+    function _dateCommand() {
+        const dateFmt = String(root.config.overlayDateFormat || "%a %d %b").trim();
+        const timeFmt = String(root.config.overlayTimeFormat || "%H:%M").trim();
+        const mode = String(root.config.overlayDateTimeFormat || "date-time").trim().toLowerCase();
+        if (mode === "date")
+            return "date '+" + dateFmt + "'";
+        if (mode === "time")
+            return "date '+" + timeFmt + "'";
+        if (mode === "iso")
+            return "date '+%F %T'";
+        return "date '+" + dateFmt + " " + timeFmt + "'";
     }
 
     function _itemLeftX(item) {
@@ -476,45 +611,211 @@ PanelWindow {
         RowLayout {
             spacing: 8
             Layout.alignment: Qt.AlignVCenter
+            visible: root.config.workspaceSegmentVisible
             Label {
-                text: "MyShell"
+                text: root.config.formatUiText("MyShell")
                 visible: root.config.showShellTitle
                 color: root.config.barAccentColor
                 font.bold: true
                 font.family: root.uiFontFamily
                 font.pixelSize: root.uiFontSize + 1
             }
-            Row {
-                spacing: 5
-                Repeater {
-                    model: root.filteredWorkspaceIds
-                    delegate: Rectangle {
-                        required property var modelData
-                        readonly property int wsId: Number(modelData)
-                        color: wsId === root.focusedWorkspaceId ? root.config.workspaceAccentColor : root.config.workspaceBackgroundColor
-                        border.width: root.config.buttonBorderWidth
-                        border.color: root.config.barAccentColor
-                        radius: root.config.workspaceRounding
-                        implicitWidth: 24
-                        implicitHeight: 22
-                        Label {
-                            anchors.centerIn: parent
-                            text: String(parent.wsId)
-                            color: parent.wsId === root.focusedWorkspaceId ? root.config.workspaceColor : root.config.barTextColor
-                            font.bold: true
-                            font.family: root.uiFontFamily
-                            font.pixelSize: root.uiFontSize
+            Rectangle {
+                color: "transparent"
+                border.width: 0
+                border.color: root.config.barAccentColor
+                radius: root.config.workspaceRounding
+                implicitHeight: 22
+                implicitWidth: workspaceLayer.implicitWidth + 2
+
+                Item {
+                    id: workspaceLayer
+                    anchors.centerIn: parent
+                    property var activeItem: null
+                    property real activeItemX: 0
+                    property real activeItemY: 0
+                    property real activeItemW: 0
+                    property real activeItemH: 0
+                    function _findFocusedChip(node) {
+                        if (!node)
+                            return null;
+                        if (node.wsId !== undefined && Number(node.wsId) === Number(root.focusedWorkspaceId))
+                            return node;
+                        const kids = node.children || [];
+                        for (let i = 0; i < kids.length; i++) {
+                            const hit = _findFocusedChip(kids[i]);
+                            if (hit)
+                                return hit;
                         }
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onEntered: root.openWorkspacePreview(parent.wsId, parent)
-                            onExited: root.queueWorkspacePreviewClose(parent.wsId)
-                            onClicked: wsSwitchProc.exec({
-                                command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl dispatch workspace " + parent.wsId + "; fi"]
-                            })
+                        return null;
+                    }
+                    function refreshActiveItem() {
+                        const hit = _findFocusedChip(workspaceRow);
+                        activeItem = hit;
+                        if (!hit)
+                            return;
+                        const mapped = hit.mapToItem(workspaceLayer, 0, 0);
+                        activeItemX = mapped.x;
+                        activeItemY = mapped.y;
+                        activeItemW = hit.width;
+                        activeItemH = hit.height;
+                    }
+                    implicitWidth: workspaceRow.implicitWidth
+                    implicitHeight: workspaceRow.implicitHeight
+
+                    Rectangle {
+                        visible: root.config.workspaceHighlightCurrent && workspaceLayer.activeItem !== null
+                        x: workspaceLayer.activeItemX
+                        y: workspaceLayer.activeItemY
+                        width: workspaceLayer.activeItemW
+                        height: workspaceLayer.activeItemH
+                        radius: root.config.workspaceRounding
+                        color: root.config.workspaceHighlightColor
+                        z: 1
+                        Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                        Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                        Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                    }
+
+                    Row {
+                        id: workspaceRow
+                        spacing: 8
+                        z: 2
+                        Repeater {
+                            id: workspaceGroupRepeater
+                            model: root._workspaceGroups(root.visibleWorkspaceIds)
+                            delegate: Rectangle {
+                                required property var modelData
+                                readonly property bool isCurrentScreenGroup: String(modelData.monitorName || "") === String(root.barMonitorName || "")
+                                color: "transparent"
+                                border.width: 0
+                                border.color: "transparent"
+                                radius: root.config.workspaceRounding
+                                implicitHeight: workspaceGroupRow.implicitHeight + (border.width > 0 ? 6 : 0)
+                                implicitWidth: workspaceGroupRow.implicitWidth + (border.width > 0 ? 6 : 0)
+                                property real activeFirstX: {
+                                    let first = -1;
+                                    for (let i = 0; i < workspaceRepeater.count; i++) {
+                                        const item = workspaceRepeater.itemAt(i);
+                                        if (item && item.hasApps) {
+                                            first = item.x;
+                                            break;
+                                        }
+                                    }
+                                    return first;
+                                }
+                                property real activeLastX: {
+                                    let last = -1;
+                                    for (let i = workspaceRepeater.count - 1; i >= 0; i--) {
+                                        const item = workspaceRepeater.itemAt(i);
+                                        if (item && item.hasApps) {
+                                            last = item.x + item.width;
+                                            break;
+                                        }
+                                    }
+                                    return last;
+                                }
+
+                                Rectangle {
+                                    visible: root.config.workspaceActiveScreenBackground && parent.activeFirstX >= 0 && parent.activeLastX > parent.activeFirstX
+                                    x: parent.activeFirstX
+                                    y: 0
+                                    width: Math.max(0, parent.activeLastX - parent.activeFirstX)
+                                    height: parent.height
+                                    radius: root.config.workspaceRounding
+                                    color: root.config.workspaceActiveGroupBackgroundColor
+                                    border.width: root.config.buttonBorderWidth
+                                    border.color: root.config.workspaceActiveGroupBorderColor
+                                    z: 0
+                                    Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                    Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                }
+
+                                Row {
+                                    id: workspaceGroupRow
+                                    anchors.centerIn: parent
+                                    spacing: 5
+                                    Repeater {
+                                        id: workspaceRepeater
+                                        model: modelData.ids || []
+                                        delegate: Rectangle {
+                                            id: wsChip
+                                            required property var modelData
+                                            readonly property int wsId: Number(modelData)
+                                            readonly property bool hasApps: root._workspaceIsActive(wsId)
+                                            property bool wsHovered: wsMouse.containsMouse
+                                            color: (root.config.workspaceHighlightCurrent && wsId === root.focusedWorkspaceId)
+                                                ? "transparent"
+                                                : (wsHovered
+                                                    ? Qt.rgba(root.config.workspaceAccentColor.r, root.config.workspaceAccentColor.g, root.config.workspaceAccentColor.b, 0.18)
+                                                    : root.config.workspaceBackgroundColor)
+                                            border.width: root.config.buttonBorderWidth
+                                            border.color: wsHovered ? root.config.workspaceAccentColor : root.config.barAccentColor
+                                            radius: root.config.workspaceRounding
+                                            implicitWidth: root._workspaceChipWidth(wsId)
+                                            implicitHeight: 22
+                                            scale: wsHovered ? 1.05 : 1
+                                            z: 1
+                                            Behavior on scale { NumberAnimation { duration: 90 } }
+                                            Row {
+                                                anchors.centerIn: parent
+                                                spacing: 3
+                                                Label {
+                                                    text: String(wsChip.wsId)
+                                                    color: (root.config.workspaceHighlightCurrent && wsChip.wsId === root.focusedWorkspaceId)
+                                                        ? root.config.workspaceActiveTextColor
+                                                        : root.config.barTextColor
+                                                    font.bold: true
+                                                    font.family: root.uiFontFamily
+                                                    font.pixelSize: root.uiFontSize
+                                                }
+                                                Row {
+                                                    visible: root.config.workspaceShowWindowIcons
+                                                    spacing: 1
+                                                    Repeater {
+                                                        model: root._workspaceClientIcons(wsChip.wsId)
+                                                        delegate: Image {
+                                                            required property string modelData
+                                                            source: root._iconSource(modelData)
+                                                            width: 12
+                                                            height: 12
+                                                            fillMode: Image.PreserveAspectFit
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            Label {
+                                                visible: root.config.workspaceShowWindowIcons && root._workspaceClientIcons(wsChip.wsId).length < 1 && root._workspaceClientCount(wsChip.wsId) > 0
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                anchors.right: parent.right
+                                                anchors.rightMargin: 4
+                                                text: "•"
+                                                color: (root.config.workspaceHighlightCurrent && wsChip.wsId === root.focusedWorkspaceId)
+                                                    ? root.config.workspaceActiveTextColor
+                                                    : root.config.barTextColor
+                                                font.family: root.uiFontFamily
+                                                font.pixelSize: root.uiFontSize - 1
+                                            }
+                                            MouseArea {
+                                                id: wsMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                onEntered: if (root.config.workspaceShowLayoutOnHover) root.openWorkspacePreview(wsChip.wsId, wsChip)
+                                                onExited: if (root.config.workspaceShowLayoutOnHover) root.queueWorkspacePreviewClose(wsChip.wsId)
+                                                onClicked: wsSwitchProc.exec({
+                                                    command: ["bash", "-lc", "if command -v hyprctl >/dev/null 2>&1; then hyprctl dispatch workspace " + wsChip.wsId + "; fi"]
+                                                })
+                                            }
+                                            Component.onCompleted: Qt.callLater(workspaceLayer.refreshActiveItem)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
+                    Component.onCompleted: Qt.callLater(refreshActiveItem)
+                    onImplicitWidthChanged: Qt.callLater(refreshActiveItem)
+                    onImplicitHeightChanged: Qt.callLater(refreshActiveItem)
                 }
             }
         }
@@ -560,7 +861,7 @@ PanelWindow {
                 implicitHeight: 22
                 Label {
                     anchors.centerIn: parent
-                    text: "CAPS"
+                    text: root.config.formatUiText("Caps")
                     color: root.config.accentColor
                     font.bold: true
                     font.family: root.uiFontFamily
@@ -585,7 +886,7 @@ PanelWindow {
                 implicitHeight: 22
                 Label {
                     anchors.centerIn: parent
-                    text: "NUM"
+                    text: root.config.formatUiText("Num")
                     color: root.config.accentColor
                     font.bold: true
                     font.family: root.uiFontFamily
@@ -602,7 +903,7 @@ PanelWindow {
             Label {
                 visible: root._barOverlayEnabled("clock", true)
                 text: root.dateTimeText
-                color: root.config.textColor
+                color: root.config.overlayDateColor
                 font.family: root.uiFontFamily
                 font.pixelSize: root.uiFontSize
                 Layout.alignment: Qt.AlignVCenter
@@ -711,6 +1012,10 @@ PanelWindow {
                         percent: root.batteryPercent
                         textColor: root.config.barTextColor
                         accentColor: root.config.barAccentColor
+                        segment0Color: root.config.overlayBatteryBarColorCritical
+                        segment1Color: root.config.overlayBatteryBarColorLow
+                        segment2Color: root.config.overlayBatteryBarColorMedium
+                        segment3Color: root.config.overlayBatteryBarColorFull
                         barRadius: Math.max(0, Math.min(root.config.rounding, 8))
                         segmentWidth: 7
                         segmentHeight: 14
@@ -731,6 +1036,7 @@ PanelWindow {
 
     PanelWindow {
         id: workspacePreviewWindow
+        screen: root.screen
         property bool shown: root.workspacePreviewShown
         property bool mounted: shown
         property bool presented: shown
@@ -818,6 +1124,7 @@ PanelWindow {
 
     PanelWindow {
         id: statusMenuWindow
+        screen: root.screen
         property bool shown: root.activeStatusMenu.length > 0
         property bool mounted: shown
         property bool presented: shown
@@ -881,8 +1188,8 @@ PanelWindow {
 
             Label {
                 text: root.activeStatusMenu === "wifi" ? root.networkDisplayText
-                    : root.activeStatusMenu === "bt" ? "Bluetooth"
-                    : root.activeStatusMenu === "locks" ? "LOCKS"
+                    : root.activeStatusMenu === "bt" ? "BLUETOOTH"
+                    : root.activeStatusMenu === "locks" ? root.config.formatUiText("Locks")
                     : root.activeStatusMenu === "battery" ? "BATTERY"
                     : root.activeStatusMenu === "audio" ? "AUDIO"
                     : ""
@@ -1015,9 +1322,15 @@ PanelWindow {
         }
     }
 
-    onActiveStatusMenuChanged: {
-        if (activeStatusMenu !== "wifi")
-            statusMenuInputFocused = false;
-        _applyFontRecursive(statusMenuWindow);
+    Connections {
+        target: barState
+        function onActiveStatusMenuChanged() {
+            if (root.activeStatusMenu !== "wifi")
+                root.statusMenuInputFocused = false;
+            root._applyFontRecursive(statusMenuWindow);
+        }
+        function onFocusedWorkspaceIdChanged() {
+            Qt.callLater(workspaceLayer.refreshActiveItem);
+        }
     }
 }

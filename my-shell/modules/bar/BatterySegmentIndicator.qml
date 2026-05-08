@@ -8,6 +8,10 @@ Item {
     property real percent: 0
     property color textColor: "#ffffff"
     property color accentColor: textColor
+    property color segment0Color: textColor
+    property color segment1Color: textColor
+    property color segment2Color: textColor
+    property color segment3Color: accentColor
     property bool horizontal: false
     property int barRadius: 0
 
@@ -31,8 +35,22 @@ Item {
     }
 
     function segmentColor(index) {
-        const highestBand = root.horizontal ? 3 : 0;
-        return index === highestBand ? root.accentColor : root.textColor;
+        if (root.horizontal) {
+            if (index === 0)
+                return root.segment0Color;
+            if (index === 1)
+                return root.segment1Color;
+            if (index === 2)
+                return root.segment2Color;
+            return root.segment3Color;
+        }
+        if (index === 0)
+            return root.segment3Color;
+        if (index === 1)
+            return root.segment2Color;
+        if (index === 2)
+            return root.segment1Color;
+        return root.segment0Color;
     }
 
     Column {

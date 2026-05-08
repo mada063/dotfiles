@@ -24,8 +24,29 @@ Rectangle {
     border.width: 1
     border.color: root.checked ? root.onBorderColor : root.offBorderColor
     opacity: root.enabled ? 1 : 0.35
+    scale: switchMouse.pressed ? 0.96 : 1
+
+    Behavior on color {
+        ColorAnimation {
+            duration: 140
+            easing.type: Easing.OutCubic
+        }
+    }
+    Behavior on border.color {
+        ColorAnimation {
+            duration: 140
+            easing.type: Easing.OutCubic
+        }
+    }
+    Behavior on scale {
+        NumberAnimation {
+            duration: 100
+            easing.type: Easing.OutCubic
+        }
+    }
 
     Rectangle {
+        id: knob
         width: root.knobSize
         height: root.knobSize
         radius: Math.max(0, Math.min(height / 2, root.rounding))
@@ -39,11 +60,27 @@ Rectangle {
                 easing.type: Easing.OutCubic
             }
         }
+        Behavior on color {
+            ColorAnimation {
+                duration: 140
+                easing.type: Easing.OutCubic
+            }
+        }
+        Behavior on scale {
+            NumberAnimation {
+                duration: 110
+                easing.type: Easing.OutBack
+            }
+        }
     }
 
     MouseArea {
+        id: switchMouse
         anchors.fill: parent
         enabled: root.enabled
+        onPressed: knob.scale = 0.9
+        onReleased: knob.scale = 1
+        onCanceled: knob.scale = 1
         onClicked: root.toggled()
     }
 }

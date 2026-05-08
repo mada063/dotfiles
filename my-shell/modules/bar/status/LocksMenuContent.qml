@@ -11,6 +11,6 @@ Column {
     spacing: 6
     width: _hug ? implicitWidth : Math.max(116, host.statusMenuContentWidth)
 
-    Label { text: "CAPS " + (host.capsLockOn ? "On" : "Off"); color: host.config.textColor }
-    Label { text: "NUM " + (host.numLockOn ? "On" : "Off"); color: host.config.textColor }
+    Label { text: host.config.formatUiText("CAPS") + " " + (host.capsLockOn ? host.config.formatUiText("On") : host.config.formatUiText("Off")); color: host.config.textColor }
+    Label { text: host.config.formatUiText("NUM") + " " + (host.numLockOn ? host.config.formatUiText("On") : host.config.formatUiText("Off")); color: host.config.textColor }
 }

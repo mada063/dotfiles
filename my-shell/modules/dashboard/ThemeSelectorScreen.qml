@@ -93,7 +93,7 @@ PanelWindow {
             spacing: 16
 
             Label {
-                text: "Themes"
+                text: root.config.formatUiText("Themes")
                 color: root.config.settingsTextColor
                 font.family: root.uiFontFamily
                 font.pixelSize: root.uiFontSize + 6
@@ -120,8 +120,11 @@ PanelWindow {
                         model: root.availableThemes
                         delegate: Item {
                             required property var modelData
+                            property bool tileHovered: selectorHover.containsMouse
                             width: selectorArea.barWidth
                             height: selectorArea.barHeight
+                            scale: tileHovered ? 1.06 : 1
+                            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
                             Rectangle {
                                 anchors.fill: parent
@@ -131,7 +134,7 @@ PanelWindow {
                                     : Math.max(1, root.config.buttonBorderWidth)
                                 border.color: String(root.config.activeThemeId) === String(modelData.id)
                                     ? root._themeAccentColor(modelData)
-                                    : root.config.mutedTextColor
+                                    : (tileHovered ? root.config.settingsAccentColor : root.config.mutedTextColor)
                                 radius: root._themeRounding(modelData)
                                 clip: true
 
@@ -153,7 +156,9 @@ PanelWindow {
                             }
 
                             MouseArea {
+                                id: selectorHover
                                 anchors.fill: parent
+                                hoverEnabled: true
                                 onClicked: {
                                     root.shell.setActiveThemeById(modelData.id);
                                     root.shell.themeSelectorVisible = false;

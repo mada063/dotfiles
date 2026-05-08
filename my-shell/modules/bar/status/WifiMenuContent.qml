@@ -18,13 +18,13 @@ Column {
     MenuToggle {
         width: parent.width
         host: root.host
-        labelText: "Enabled"
+        labelText: host.config.formatUiText("Enabled")
         checked: host.networkEnabled
         onToggled: host.toggleWifiEnabled()
     }
 
     MenuSectionLabel {
-        text: "Networks"
+        text: host.config.formatUiText("Networks")
         host: root.host
     }
 
@@ -41,9 +41,14 @@ Column {
                 width: ListView.view.width - 8
                 height: modelData.secured && host.wifiConnectSsid === modelData.ssid && !modelData.active ? 76 : 42
                 radius: Math.max(0, host.config.rounding - 3)
-                color: modelData.active ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.12) : "transparent"
+                color: modelData.active
+                    ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.12)
+                    : (_wifiRowHover.hovered ? Qt.rgba(host.config.overlayAccentColor.r, host.config.overlayAccentColor.g, host.config.overlayAccentColor.b, 0.10) : "transparent")
                 border.width: host.config.buttonBorderWidth
-                border.color: host.config.mutedTextColor
+                border.color: (modelData.active || _wifiRowHover.hovered) ? host.config.overlayAccentColor : host.config.mutedTextColor
+
+                HoverHandler { id: _wifiRowHover }
+
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 6
@@ -54,16 +59,16 @@ Column {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 0
-                            Label { text: modelData.ssid; color: host.config.textColor; elide: Text.ElideRight; Layout.fillWidth: true }
+                            Label { text: modelData.ssid; color: _wifiRowHover.hovered ? host.config.overlayAccentColor : host.config.textColor; elide: Text.ElideRight; Layout.fillWidth: true }
                             Label { text: modelData.security + "  " + modelData.signal + "%"; color: host.config.mutedTextColor; elide: Text.ElideRight; Layout.fillWidth: true; font.pixelSize: Math.max(10, host.uiFontSize - 1) }
                         }
                         MenuButton {
                             host: root.host
                             buttonImplicitWidth: modelData.active ? 84 : 70
                             buttonImplicitHeight: 24
-                            labelText: modelData.active ? "Disconnect"
-                                : modelData.secured && host.wifiConnectSsid === modelData.ssid ? "Cancel"
-                                : "Connect"
+                            labelText: modelData.active ? host.config.formatUiText("Disconnect")
+                                : modelData.secured && host.wifiConnectSsid === modelData.ssid ? host.config.formatUiText("Cancel")
+                                : host.config.formatUiText("Connect")
                             onClicked: host.clickWifiNetwork(modelData)
                         }
                     }
@@ -103,7 +108,7 @@ Column {
                             host: root.host
                             buttonImplicitWidth: 70
                             buttonImplicitHeight: 28
-                            labelText: "Connect"
+                            labelText: host.config.formatUiText("Connect")
                             buttonEnabled: host.wifiConnectSsid === modelData.ssid && host.wifiConnectPassword.length > 0
                             onClicked: host.submitWifiPassword(modelData)
                         }
@@ -117,7 +122,7 @@ Column {
         width: parent.width
         host: root.host
         buttonImplicitHeight: 24
-        labelText: "Rescan"
+        labelText: host.config.formatUiText("Rescan")
         onClicked: host.rescanWifi()
     }
 }

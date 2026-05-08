@@ -11,6 +11,8 @@ ScrollView {
 
     clip: true
 
+    function _T(s) { return root.control.config.formatUiText(s); }
+
     function _copy(value) { return Common.deepCopy(value); }
 
     function _updateDecoration(key, value) {
@@ -55,7 +57,8 @@ ScrollView {
                     font.bold: true
                 }
                 Label {
-                    text: "Changes are written to `~/.config/hypr/quickshell-generated.conf`, then Hyprland is reloaded."
+                    visible: root.control.config.hyprlandShowInfoMessage
+                    text: _T("Changes are written to `~/.config/hypr/quickshell-generated.conf`, then Hyprland is reloaded.")
                     color: root.control.config.mutedTextColor
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
@@ -63,7 +66,7 @@ ScrollView {
             }
 
             Button {
-                text: "Apply Now"
+                text: _T("Apply now")
                 onClicked: root.control.shell.queueHyprlandSync()
             }
         }
@@ -73,7 +76,7 @@ ScrollView {
             implicitHeight: 34
             Layout.bottomMargin: 12
             StyledCheckBox {
-                text: "Enable shell-managed Hyprland settings"
+                text: _T("Enable shell-managed Hyprland settings")
                 control: root.control
                 checked: root.control.config.hyprlandManagedEnabled
                 onToggled: root.control.config.hyprlandManagedEnabled = checked
@@ -81,15 +84,28 @@ ScrollView {
             Item { Layout.fillWidth: true }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            implicitHeight: 34
+            Layout.bottomMargin: 12
+            StyledCheckBox {
+                text: _T("Disable Hyprland splash")
+                control: root.control
+                checked: root.control.config.hyprlandDisableSplash
+                onToggled: root.control.config.hyprlandDisableSplash = checked
+            }
+            Item { Layout.fillWidth: true }
+        }
+
         // ── Decoration ────────────────────────────────────────────────
 
-        Label { text: "Decoration"; color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 8 }
+        Label { text: _T("Decoration"); color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 8 }
 
         RowLayout {
             Layout.fillWidth: true
             implicitHeight: 34
             spacing: 12
-            Label { text: "Gaps In"; color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
+            Label { text: _T("Gaps in"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
             SpinBox { from: 0; to: 40; value: Number(root.control.config.hyprlandDecoration.gapsIn || 0); onValueModified: root._updateDecoration("gapsIn", value) }
         }
 
@@ -97,7 +113,7 @@ ScrollView {
             Layout.fillWidth: true
             implicitHeight: 34
             spacing: 12
-            Label { text: "Gaps Out"; color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
+            Label { text: _T("Gaps out"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
             SpinBox { from: 0; to: 60; value: Number(root.control.config.hyprlandDecoration.gapsOut || 0); onValueModified: root._updateDecoration("gapsOut", value) }
         }
 
@@ -105,7 +121,7 @@ ScrollView {
             Layout.fillWidth: true
             implicitHeight: 34
             spacing: 12
-            Label { text: "Border Size"; color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
+            Label { text: _T("Border size"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
             SpinBox { from: 0; to: 12; value: Number(root.control.config.hyprlandDecoration.borderSize || 0); onValueModified: root._updateDecoration("borderSize", value) }
         }
 
@@ -113,7 +129,7 @@ ScrollView {
             Layout.fillWidth: true
             implicitHeight: 34
             spacing: 12
-            Label { text: "Rounding"; color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
+            Label { text: _T("Rounding"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
             SpinBox { from: 0; to: 40; value: Number(root.control.config.hyprlandDecoration.rounding || 0); onValueModified: root._updateDecoration("rounding", value) }
         }
 
@@ -121,7 +137,7 @@ ScrollView {
             Layout.fillWidth: true
             implicitHeight: 34
             spacing: 12
-            Label { text: "Blur Size"; color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
+            Label { text: _T("Blur size"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
             SpinBox { from: 0; to: 20; value: Number(root.control.config.hyprlandDecoration.blurSize || 0); onValueModified: root._updateDecoration("blurSize", value) }
         }
 
@@ -129,7 +145,7 @@ ScrollView {
             Layout.fillWidth: true
             implicitHeight: 34
             spacing: 12
-            Label { text: "Blur Passes"; color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
+            Label { text: _T("Blur passes"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
             SpinBox { from: 0; to: 4; value: Number(root.control.config.hyprlandDecoration.blurPasses || 0); onValueModified: root._updateDecoration("blurPasses", value) }
         }
 
@@ -138,7 +154,7 @@ ScrollView {
             implicitHeight: 34
             Layout.bottomMargin: 6
             StyledCheckBox {
-                text: "Enable blur"
+                text: _T("Enable blur")
                 control: root.control
                 checked: Boolean(root.control.config.hyprlandDecoration.blurEnabled)
                 onToggled: root._updateDecoration("blurEnabled", checked)
@@ -150,7 +166,7 @@ ScrollView {
             Layout.fillWidth: true
             Layout.bottomMargin: 8
             config: root.control.config
-            labelText: "Active Border  ·  follows theme accent"
+            labelText: _T("Active border  ·  follows theme accent")
             colorValue: String(root.control.config.hyprlandDecoration.activeBorderColor || root.control.config.accentColor)
             options: ["#ff8c32", "#41aefc", "#0073cd", "#22c55e", "#14b8a6", "#a855f7", "#f59e0b", "#ffffff", "#444444"]
             onColorChanged: value => root._updateDecoration("activeBorderColor", value)
@@ -160,7 +176,7 @@ ScrollView {
             Layout.fillWidth: true
             Layout.bottomMargin: 18
             config: root.control.config
-            labelText: "Inactive Border"
+            labelText: _T("Inactive border")
             colorValue: String(root.control.config.hyprlandDecoration.inactiveBorderColor || "#444444")
             options: ["#444444", "#a1a1aa", "#18181b", "#0f0f12", "#41aefc", "#0073cd", "#ff8c32", "#ffffff"]
             onColorChanged: value => root._updateDecoration("inactiveBorderColor", value)
@@ -171,13 +187,13 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             Layout.bottomMargin: 6
-            Label { text: "Monitors"; color: root.control.config.accentColor; font.bold: true }
+            Label { text: _T("Monitors"); color: root.control.config.accentColor; font.bold: true }
             Item { Layout.fillWidth: true }
-            Button { text: "Screen Settings →"; onClicked: root.control.currentSectionIndex = 1 }
+            Button { text: _T("Screen settings →"); onClicked: root.control.currentSectionIndex = 1 }
         }
 
         Label {
-            text: "Monitor arrangement and configuration live in the Screen tab."
+            text: _T("Monitor arrangement and configuration live in the Screen tab.")
             color: root.control.config.mutedTextColor
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -185,7 +201,7 @@ ScrollView {
         }
 
         Label {
-            text: "Managed monitors: " + String((root.control.config.hyprlandMonitors || []).length)
+            text: _T("Managed monitors:") + " " + String((root.control.config.hyprlandMonitors || []).length)
             color: root.control.config.textColor
             Layout.bottomMargin: 18
         }
@@ -195,10 +211,10 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             Layout.bottomMargin: 8
-            Label { text: "Binds"; color: root.control.config.accentColor; font.bold: true }
+            Label { text: _T("Binds"); color: root.control.config.accentColor; font.bold: true }
             Item { Layout.fillWidth: true }
             Button {
-                text: "Add Bind"
+                text: _T("Add bind")
                 onClicked: {
                     let next = root._copy(root.control.config.hyprlandBinds || []);
                     next.push({ mods: "SUPER", key: "", dispatcher: "exec", argument: "" });
@@ -229,12 +245,12 @@ ScrollView {
                     rowSpacing: 6
                     columnSpacing: 8
 
-                    Label { text: "Mods"; color: root.control.config.textColor }
+                    Label { text: _T("Mods"); color: root.control.config.textColor }
                     TextField { text: String(modelData.mods || ""); onEditingFinished: root._updateBind(index, "mods", String(text).trim()) }
-                    Label { text: "Key"; color: root.control.config.textColor }
+                    Label { text: _T("Key"); color: root.control.config.textColor }
                     TextField { text: String(modelData.key || ""); onEditingFinished: root._updateBind(index, "key", String(text).trim()) }
                     Button {
-                        text: confirmRemove ? "Confirm" : "Remove"
+                        text: confirmRemove ? _T("Confirm") : _T("Remove")
                         onClicked: {
                             if (!confirmRemove) { confirmRemove = true; return; }
                             let next = root._copy(root.control.config.hyprlandBinds || []);
@@ -242,11 +258,11 @@ ScrollView {
                             root.control.config.hyprlandBinds = next;
                         }
                     }
-                    Button { text: "Cancel"; visible: confirmRemove; onClicked: confirmRemove = false }
+                    Button { text: _T("Cancel"); visible: confirmRemove; onClicked: confirmRemove = false }
 
-                    Label { text: "Dispatcher"; color: root.control.config.textColor }
+                    Label { text: _T("Dispatcher"); color: root.control.config.textColor }
                     TextField { text: String(modelData.dispatcher || "exec"); onEditingFinished: root._updateBind(index, "dispatcher", String(text).trim() || "exec") }
-                    Label { text: "Argument"; color: root.control.config.textColor }
+                    Label { text: _T("Argument"); color: root.control.config.textColor }
                     TextField {
                         Layout.columnSpan: 2
                         Layout.fillWidth: true
@@ -264,10 +280,10 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             Layout.bottomMargin: 8
-            Label { text: "Workspace Rules"; color: root.control.config.accentColor; font.bold: true }
+            Label { text: _T("Workspace rules"); color: root.control.config.accentColor; font.bold: true }
             Item { Layout.fillWidth: true }
             Button {
-                text: "Add Rule"
+                text: _T("Add rule")
                 onClicked: {
                     let next = root._copy(root.control.config.hyprlandWorkspaceRules || []);
                     next.push({ workspace: "", monitor: "", defaultName: "", persistent: true, isDefault: false });
@@ -298,10 +314,10 @@ ScrollView {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Label { text: "Rule " + (index + 1); color: root.control.config.textColor; font.bold: true }
+                        Label { text: _T("Rule") + " " + (index + 1); color: root.control.config.textColor; font.bold: true }
                         Item { Layout.fillWidth: true }
                         Button {
-                            text: confirmRemove ? "Confirm" : "Remove"
+                            text: confirmRemove ? _T("Confirm") : _T("Remove")
                             onClicked: {
                                 if (!confirmRemove) { confirmRemove = true; return; }
                                 let next = root._copy(root.control.config.hyprlandWorkspaceRules || []);
@@ -309,7 +325,7 @@ ScrollView {
                                 root.control.config.hyprlandWorkspaceRules = next;
                             }
                         }
-                        Button { text: "Cancel"; visible: confirmRemove; onClicked: confirmRemove = false }
+                        Button { text: _T("Cancel"); visible: confirmRemove; onClicked: confirmRemove = false }
                     }
 
                     GridLayout {
@@ -318,12 +334,12 @@ ScrollView {
                         rowSpacing: 6
                         columnSpacing: 8
 
-                        Label { text: "Workspace"; color: root.control.config.textColor }
+                        Label { text: _T("Workspace"); color: root.control.config.textColor }
                         TextField { text: String(modelData.workspace || ""); onEditingFinished: root._updateWorkspaceRule(index, "workspace", String(text).trim()) }
-                        Label { text: "Monitor"; color: root.control.config.textColor }
+                        Label { text: _T("Monitor"); color: root.control.config.textColor }
                         TextField { text: String(modelData.monitor || ""); onEditingFinished: root._updateWorkspaceRule(index, "monitor", String(text).trim()) }
 
-                        Label { text: "Name"; color: root.control.config.textColor }
+                        Label { text: _T("Name"); color: root.control.config.textColor }
                         TextField {
                             Layout.columnSpan: 3
                             Layout.fillWidth: true
@@ -334,13 +350,13 @@ ScrollView {
 
                     RowLayout {
                         StyledCheckBox {
-                            text: "Persistent"
+                            text: _T("Persistent")
                             control: root.control
                             checked: Boolean(modelData.persistent)
                             onToggled: root._updateWorkspaceRule(index, "persistent", checked)
                         }
                         StyledCheckBox {
-                            text: "Default"
+                            text: _T("Default")
                             control: root.control
                             checked: Boolean(modelData.isDefault)
                             onToggled: root._updateWorkspaceRule(index, "isDefault", checked)
