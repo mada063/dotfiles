@@ -448,6 +448,7 @@ ShellRoot {
             batteryBarColorMedium: _themeOptionalText(component, "batteryBarColorMedium"),
             batteryBarColorHigh: _themeOptionalText(component, "batteryBarColorHigh"),
             batteryBarColorFull: _themeOptionalText(component, "batteryBarColorFull"),
+            batteryBarColorCharging: _themeOptionalText(component, "batteryBarColorCharging"),
             notificationTextColor: _themeOptionalText(component, "notificationTextColor"),
             notificationBorderColor: _themeOptionalText(component, "notificationBorderColor"),
             notificationBackgroundColor: _themeOptionalText(component, "notificationBackgroundColor"),
@@ -606,6 +607,7 @@ ShellRoot {
             overlayBatteryBarColorMedium: _componentColor(components, "overlay", "batteryBarColorMedium", _componentColor(components, "overlay", "accentColor", general.accentColor)),
             overlayBatteryBarColorHigh: _componentColor(components, "overlay", "batteryBarColorHigh", _componentColor(components, "overlay", "textColor", general.textColor)),
             overlayBatteryBarColorFull: _componentColor(components, "overlay", "batteryBarColorFull", _componentColor(components, "overlay", "accentColor", general.accentColor)),
+            overlayBatteryBarColorCharging: _componentColor(components, "overlay", "batteryBarColorCharging", _componentColor(components, "overlay", "batteryBarColorFull", _componentColor(components, "overlay", "accentColor", general.accentColor))),
             overlayRounding: _componentRounding(components, "overlay", general.rounding),
             volumeColor: _componentColor(components, "visualization", "accentColor", general.accentColor),
             visualizationBackgroundColor: _componentColor(components, "visualization", "backgroundColor", general.panelColor || general.backgroundColor),
@@ -737,6 +739,7 @@ ShellRoot {
         config.overlayBatteryBarColorMedium = next.overlayBatteryBarColorMedium;
         config.overlayBatteryBarColorHigh = next.overlayBatteryBarColorHigh;
         config.overlayBatteryBarColorFull = next.overlayBatteryBarColorFull;
+        config.overlayBatteryBarColorCharging = next.overlayBatteryBarColorCharging;
         config.overlayRounding = next.overlayRounding;
         config.visualizationBackgroundColor = next.visualizationBackgroundColor;
         config.visualizationTextColor = next.visualizationTextColor;
@@ -894,6 +897,7 @@ ShellRoot {
                     batteryBarColorMedium: String(store.overlayBatteryBarColorMedium || ""),
                     batteryBarColorHigh: String(store.overlayBatteryBarColorHigh || ""),
                     batteryBarColorFull: String(store.overlayBatteryBarColorFull || ""),
+                    batteryBarColorCharging: String(store.overlayBatteryBarColorCharging || ""),
                     rounding: store.overlayRounding
                 },
                 visualization: {
@@ -1099,6 +1103,7 @@ ShellRoot {
         property string overlayBatteryBarColorMedium: ""
         property string overlayBatteryBarColorHigh: ""
         property string overlayBatteryBarColorFull: ""
+        property string overlayBatteryBarColorCharging: ""
         property int overlayRounding: 8
         property string visualizationBackgroundColor: ""
         property string visualizationTextColor: ""
@@ -1270,6 +1275,7 @@ ShellRoot {
             overlayBatteryBarColorMedium: store.overlayBatteryBarColorMedium,
             overlayBatteryBarColorHigh: store.overlayBatteryBarColorHigh,
             overlayBatteryBarColorFull: store.overlayBatteryBarColorFull,
+            overlayBatteryBarColorCharging: store.overlayBatteryBarColorCharging,
             overlayRounding: store.overlayRounding,
             visualizationBackgroundColor: store.visualizationBackgroundColor,
             visualizationTextColor: store.visualizationTextColor,
@@ -1590,6 +1596,8 @@ ShellRoot {
                     store.overlayBatteryBarColorHigh = String(cfg.overlayBatteryBarColorHigh);
                 if (cfg.overlayBatteryBarColorFull !== undefined)
                     store.overlayBatteryBarColorFull = String(cfg.overlayBatteryBarColorFull);
+                if (cfg.overlayBatteryBarColorCharging !== undefined)
+                    store.overlayBatteryBarColorCharging = String(cfg.overlayBatteryBarColorCharging);
                 if (cfg.overlayRounding !== undefined)
                     store.overlayRounding = cfg.overlayRounding;
                 if (cfg.visualizationBackgroundColor !== undefined)
@@ -1864,6 +1872,7 @@ ShellRoot {
         property color overlayBatteryBarColorMedium: store.overlayBatteryBarColorMedium.length > 0 ? store.overlayBatteryBarColorMedium : overlayAccentColor
         property color overlayBatteryBarColorHigh: store.overlayBatteryBarColorHigh.length > 0 ? store.overlayBatteryBarColorHigh : overlayTextColor
         property color overlayBatteryBarColorFull: store.overlayBatteryBarColorFull.length > 0 ? store.overlayBatteryBarColorFull : overlayAccentColor
+        property color overlayBatteryBarColorCharging: store.overlayBatteryBarColorCharging.length > 0 ? store.overlayBatteryBarColorCharging : overlayBatteryBarColorFull
         property int overlayRounding: store.overlayRounding
         property color visualizationBackgroundColor: store.visualizationBackgroundColor.length > 0 ? store.visualizationBackgroundColor : panelColor
         property color visualizationTextColor: store.visualizationTextColor.length > 0 ? store.visualizationTextColor : textColor
@@ -2044,6 +2053,7 @@ ShellRoot {
         onOverlayBatteryBarColorMediumChanged: { store.overlayBatteryBarColorMedium = String(overlayBatteryBarColorMedium); root.queueStoreSave(); }
         onOverlayBatteryBarColorHighChanged: { store.overlayBatteryBarColorHigh = String(overlayBatteryBarColorHigh); root.queueStoreSave(); }
         onOverlayBatteryBarColorFullChanged: { store.overlayBatteryBarColorFull = String(overlayBatteryBarColorFull); root.queueStoreSave(); }
+        onOverlayBatteryBarColorChargingChanged: { store.overlayBatteryBarColorCharging = String(overlayBatteryBarColorCharging); root.queueStoreSave(); }
         onOverlayRoundingChanged: { store.overlayRounding = overlayRounding; root.queueStoreSave(); }
         onVisualizationBackgroundColorChanged: { store.visualizationBackgroundColor = String(visualizationBackgroundColor); root.queueStoreSave(); }
         onVisualizationTextColorChanged: { store.visualizationTextColor = String(visualizationTextColor); root.queueStoreSave(); }

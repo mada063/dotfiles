@@ -74,6 +74,7 @@
       "buttonActiveTextColor": "#0F141D",
       "buttonActiveBorderColor": "#6AA9FF",
       "buttonActiveBackgroundColor": "#6AA9FF",
+      "batteryBarColorCharging": "#6AA9FF",
       "rounding": 8
     },
     "visualization": {

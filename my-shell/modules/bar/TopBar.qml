@@ -27,6 +27,7 @@ PanelWindow {
     readonly property string wifiText: root.networkDisplayText
     readonly property string btText: "BT"
     readonly property string batteryText: root._batteryRichText(root.batteryPercent)
+    readonly property bool batteryCharging: String(root.batteryStatusText || "").toLowerCase().indexOf("charging") >= 0
     property alias batteryPercent: barState.batteryPercent
     readonly property string audioText: root._volumeRichText(root.volumePercent, root.volumeMuted)
     property alias capsLockOn: barState.capsLockOn
@@ -1012,10 +1013,10 @@ PanelWindow {
                         percent: root.batteryPercent
                         textColor: root.config.barTextColor
                         accentColor: root.config.barAccentColor
-                        segment0Color: root.config.overlayBatteryBarColorCritical
-                        segment1Color: root.config.overlayBatteryBarColorLow
-                        segment2Color: root.config.overlayBatteryBarColorMedium
-                        segment3Color: root.config.overlayBatteryBarColorFull
+                        segment0Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorCritical
+                        segment1Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorLow
+                        segment2Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorMedium
+                        segment3Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorFull
                         barRadius: Math.max(0, Math.min(root.config.rounding, 8))
                         segmentWidth: 7
                         segmentHeight: 14

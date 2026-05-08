@@ -85,6 +85,7 @@
   "overlayBatteryBarColorMedium": "#ff9a3d",
   "overlayBatteryBarColorHigh": "#d49a70",
   "overlayBatteryBarColorFull": "#59b8ff",
+  "overlayBatteryBarColorCharging": "#59b8ff",
   "overlayRounding": 0,
   "visualizationBackgroundColor": "#1b1511",
   "visualizationTextColor": "#f0ceaf",
@@ -177,8 +178,8 @@
   "hyprlandDecoration": {
     "activeBorderColor": "#FF7A1A",
     "borderSize": 1,
-    "gapsOut": 22,
-    "gapsIn": 8,
+    "gapsOut": 10,
+    "gapsIn": 10,
     "rounding": 0
   },
   "hyprlandBinds": [],

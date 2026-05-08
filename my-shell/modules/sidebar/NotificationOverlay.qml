@@ -173,12 +173,16 @@ PanelWindow {
 
                     RowLayout {
                         id: notifRow
-                        anchors.fill: parent
-                        anchors.margins: root.config.quickSettingsNotificationPadding + 3
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: root.config.quickSettingsNotificationPadding + 4
+                        anchors.rightMargin: root.config.quickSettingsNotificationPadding + 4
                         spacing: 8
 
                         ColumnLayout {
                             Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
                             spacing: 2
                             RowLayout {
                                 Layout.fillWidth: true
@@ -187,7 +191,7 @@ PanelWindow {
                                     text: root._urgencyIcon(model.urgency)
                                     color: root._urgencyColor(model.urgency)
                                     font.family: root.uiFontFamily
-                                    font.pixelSize: Math.max(10, root.uiFontSize - 1)
+                                    font.pixelSize: Math.max(11, root.uiFontSize)
                                     font.bold: true
                                 }
                                 Label {
@@ -197,7 +201,7 @@ PanelWindow {
                                     Layout.fillWidth: true
                                     font.bold: true
                                     font.family: root.uiFontFamily
-                                    font.pixelSize: root.uiFontSize
+                                    font.pixelSize: root.uiFontSize + 1
                                 }
                             }
                             Label {
@@ -207,7 +211,7 @@ PanelWindow {
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                                 font.family: root.uiFontFamily
-                                font.pixelSize: Math.max(10, root.uiFontSize - 1)
+                                font.pixelSize: root.uiFontSize
                             }
                         }
                     }

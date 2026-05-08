@@ -107,6 +107,7 @@
       "batteryBarColorMedium": "#FF9A3D",
       "batteryBarColorHigh": "#D49A70",
       "batteryBarColorFull": "#59B8FF",
+      "batteryBarColorCharging": "#59B8FF",
       "rounding": 0
     },
     "visualization": {

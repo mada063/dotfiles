@@ -15,5 +15,10 @@
     "overlayBorderWidth": 0,
     "panelOpacity": 0.96,
     "overlayDimOpacity": 0.4
+  },
+  "components": {
+    "overlay": {
+      "batteryBarColorCharging": "#FFFFFF"
+    }
   }
 }
