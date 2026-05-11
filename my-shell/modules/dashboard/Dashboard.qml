@@ -350,8 +350,9 @@ PanelWindow {
     y: root.overlayPresented ? 0 : hiddenY
 
     Behavior on y {
+        enabled: root.config.uiAnimationsEnabled
         NumberAnimation {
-            duration: 240
+            duration: root.config.overlaySlideDurationMs
             easing.type: Easing.OutCubic
         }
     }
@@ -856,7 +857,7 @@ PanelWindow {
 
     Timer {
         id: dashboardHideTimer
-        interval: 170
+        interval: root.config.uiAnimationsEnabled ? root.config.overlaySlideDurationMs + 20 : 1
         repeat: false
         onTriggered: {
             if (!root.shown) {

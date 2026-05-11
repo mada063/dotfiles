@@ -13,10 +13,13 @@ PanelWindow {
     required property QtObject config
 
     readonly property bool shown: root.shell.wallpaperPickerVisible
+    readonly property var _anchorScreen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    readonly property real _shellW: Math.max(root.width, _anchorScreen ? _anchorScreen.width : 1920)
+    readonly property real _shellH: Math.max(root.height, _anchorScreen ? _anchorScreen.height : 1080)
     property var imageList: []
     property string searchDir: StandardPaths.standardLocations(StandardPaths.PicturesLocation)[0] || (StandardPaths.standardLocations(StandardPaths.HomeLocation)[0] + "/Pictures")
 
-    visible: root.shown || overlayDimmer.opacity > 0.01 || pickerPanel.opacity > 0.01
+    visible: root.shown || overlayDimmer.opacity > 0.01 || dialogContainer.opacity > 0.01
     focusable: root.shown
     WlrLayershell.keyboardFocus: root.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.layer: WlrLayer.Overlay
@@ -61,28 +64,50 @@ PanelWindow {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, root.config.overlayDimOpacity)
         opacity: root.shown ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 120 } }
+        Behavior on opacity {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
         MouseArea {
             anchors.fill: parent
             onClicked: root.shell.wallpaperPickerVisible = false
         }
     }
 
-    Rectangle {
-        id: pickerPanel
-        property real offsetY: root.shown ? 0 : -24
-        width: Math.min(parent.width - 48, 680)
-        height: Math.min(parent.height - 48, 220)
-        anchors.centerIn: parent
-        anchors.verticalCenterOffset: offsetY
-        color: root.config.settingsBackgroundColor
-        border.color: root.config.settingsAccentColor
-        border.width: root.config.overlayBorderWidth
-        radius: root.config.settingsRounding
-        z: 1
+    Item {
+        id: dialogContainer
+        width: Math.min(Math.max(0, _shellW - 48), 680)
+        height: Math.min(Math.max(0, _shellH - 48), 220)
+        x: root.shown ? (_shellW - width) / 2 : _shellW + 40
+        y: root.shown ? (_shellH - height) / 2 : _shellH + 40
+        scale: root.shown ? 1 : 0.95
         opacity: root.shown ? root.config.panelOpacity : 0
-        Behavior on offsetY { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-        Behavior on opacity { NumberAnimation { duration: 120 } }
+        z: 1
+
+        Behavior on x {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
+        Behavior on y {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
+        Behavior on scale {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
+        Behavior on opacity {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
+
+        Rectangle {
+            id: pickerPanel
+            anchors.fill: parent
+            color: root.config.settingsBackgroundColor
+            border.color: root.config.settingsAccentColor
+            border.width: root.config.overlayBorderWidth
+            radius: root.config.settingsRounding
 
         ColumnLayout {
             anchors.fill: parent
@@ -202,6 +227,7 @@ PanelWindow {
                     }
                 }
             }
+        }
         }
     }
 }

@@ -76,6 +76,25 @@ ScrollView {
             Layout.fillWidth: true
             implicitHeight: 34
             spacing: 12
+            Label { text: _T("All caps"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
+            Switch {
+                checked: root.control.config.uiTextStyle === "uppercase"
+                onToggled: root.control.config.uiTextStyle = checked ? "uppercase" : "standard"
+            }
+        }
+
+        Label {
+            text: _T("Uppercases titles, buttons, and other chrome labels (not dynamic content such as track titles).")
+            color: root.control.config.mutedTextColor
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.bottomMargin: 8
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            implicitHeight: 34
+            spacing: 12
             Label { text: _T("Global rounding"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
             SpinBox { from: 0; to: 24; value: root.control.config.rounding; onValueModified: root.control.config.rounding = value }
         }

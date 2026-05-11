@@ -53,13 +53,66 @@ PanelWindow {
     readonly property string wifiText: root.networkDisplayText
     readonly property string btText: "BT"
     readonly property string batText: root._batteryRichText(root.batteryPercent)
-    readonly property bool batteryCharging: String(root.batteryStatusText || "").toLowerCase().indexOf("charging") >= 0
+    // "discharging" contains substring "charging" — exclude before testing charge state.
+    readonly property bool batteryCharging: {
+        const s = String(root.batteryStatusText || "").toLowerCase();
+        if (s.indexOf("discharging") >= 0)
+            return false;
+        if (s.indexOf("not charging") >= 0)
+            return false;
+        return s.indexOf("charging") >= 0;
+    }
     property alias batteryPercent: barState.batteryPercent
-    readonly property string volText: root._volumeBarRichText(root.volumePercent, root.volumeMuted)
     property alias wifiDetailText: barState.wifiDetailText
     property alias btDetailText: barState.btDetailText
     property alias volumePercent: barState.volumePercent
     property alias volumeMuted: barState.volumeMuted
+    property alias brightnessPercent: barState.brightnessPercent
+
+    property real volumeVisualBar: 0
+    property bool volumeVisualBarReady: false
+
+    Behavior on volumeVisualBar {
+        enabled: root.volumeVisualBarReady
+        NumberAnimation {
+            duration: 260
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    Connections {
+        target: root
+        function onVolumePercentChanged() {
+            if (!root.volumeVisualBarReady)
+                return;
+            root.volumeVisualBar = Math.max(0, Math.min(100, root.volumePercent));
+        }
+    }
+
+    readonly property string volText: root._volumeBarRichText(root.volumeVisualBar, root.volumeMuted)
+
+    property real brightnessVisualBar: 0
+    property bool brightnessVisualBarReady: false
+
+    Behavior on brightnessVisualBar {
+        enabled: root.brightnessVisualBarReady
+        NumberAnimation {
+            duration: 260
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    Connections {
+        target: root
+        function onBrightnessPercentChanged() {
+            if (!root.brightnessVisualBarReady)
+                return;
+            root.brightnessVisualBar = Math.max(1, Math.min(100, root.brightnessPercent));
+        }
+    }
+
+    readonly property string briText: root._brightnessBarRichText(root.brightnessVisualBar)
+
     property alias networkEnabled: barState.networkEnabled
     property alias networkDisplayText: barState.networkDisplayText
     property alias networkTypeText: barState.networkTypeText
@@ -72,9 +125,12 @@ PanelWindow {
     property alias batteryTimeText: barState.batteryTimeText
     property alias batteryStatusText: barState.batteryStatusText
     property alias activeStatusMenu: barState.activeStatusMenu
+    property alias statusMenuPanelId: barState.statusMenuPanelId
     property real statusMenuTopY: 0
     property alias wifiConnectSsid: barState.wifiConnectSsid
     property alias wifiConnectPassword: barState.wifiConnectPassword
+    property alias wifiConnectError: barState.wifiConnectError
+    property alias wifiConnecting: barState.wifiConnecting
     property alias btDeviceTarget: barState.btDeviceTarget
     property alias wifiNetworks: barState.wifiNetworks
     property alias btDevices: barState.btDevices
@@ -91,6 +147,7 @@ PanelWindow {
     readonly property int wifiSideMenuWidth: 228
     readonly property int btSideMenuWidth: 244
     readonly property int audioSideMenuWidth: 264
+    readonly property int brightnessSideMenuWidth: 264
     readonly property int batterySideMenuWidth: 196
     // Align to the layer surface right edge — not the centered status column (avoids large horizontal error).
     readonly property real statusAnchorX: Math.max(0, root.width - 1)
@@ -99,6 +156,11 @@ PanelWindow {
     readonly property int mediumPollMs: root.config.barMediumPollMs
     readonly property int slowPollMs: root.config.barSlowPollMs
     readonly property int workspacePollMs: root.config.barWorkspacePollMs
+    // Status menu hover close delay (slide length is overlaySlideDurationMs in settings).
+    readonly property int statusMenuCloseDelayMs: root.config.hoverReleaseMs + 220
+    // Visual gap between status stack rows; hit targets extend by half above/below (no dead zones).
+    readonly property int statusColVisualSpacing: 4
+    readonly property real statusColHitBleed: statusColVisualSpacing * 0.5
     readonly property var barOverlayVisibility: root.config.barOverlayVisibility || ({})
     property int workspacePreviewId: 0
     property int workspacePreviewDisplayId: 0
@@ -283,6 +345,10 @@ PanelWindow {
         _applyFontRecursive(sideStatusMenu);
     }
     Component.onCompleted: {
+        root.volumeVisualBar = Math.max(0, Math.min(100, root.volumePercent));
+        root.volumeVisualBarReady = true;
+        root.brightnessVisualBar = Math.max(1, Math.min(100, root.brightnessPercent));
+        root.brightnessVisualBarReady = true;
         _applyFontRecursive(root);
         _applyFontRecursive(sideStatusMenu);
     }
@@ -298,23 +364,67 @@ PanelWindow {
         return !!map[name];
     }
 
+    function _cssRgba(c) {
+        return "rgba(" + Math.round(255 * c.r) + "," + Math.round(255 * c.g) + "," + Math.round(255 * c.b) + "," + c.a + ")";
+    }
+
     function _volumeBarRichText(percent, muted) {
         const p = Math.max(0, Math.min(100, Number(percent)));
-        const active = Math.round((p / 100) * 8);
-        const inactive = Qt.rgba(root.config.textColor.r, root.config.textColor.g, root.config.textColor.b, 0.5);
-        const mutedColor = "#6b7280";
-        const base = root.config.textColor;
+        const total = 8;
+        const fillThr = (p / 100) * total;
+        const barFg = root.config.barTextColor;
+        const inactive = Qt.rgba(barFg.r, barFg.g, barFg.b, 0.5);
+        const base = barFg;
         const hi = root.config.volumeColor;
+        const mutedFull = Qt.color("#6b7280");
         let bars = "";
-        for (let i = 1; i <= 8; i++) {
-            let color = inactive;
-            if (i <= active) {
-                if (muted)
-                    color = mutedColor;
-                else
-                    color = i > 5 ? hi : base;
+        for (let i = 1; i <= total; i++) {
+            const full = muted ? mutedFull : (i > 5 ? hi : base);
+            let color;
+            if (fillThr <= i - 1)
+                color = inactive;
+            else if (fillThr >= i)
+                color = full;
+            else {
+                const frac = fillThr - (i - 1);
+                color = Qt.rgba(
+                    inactive.r + (full.r - inactive.r) * frac,
+                    inactive.g + (full.g - inactive.g) * frac,
+                    inactive.b + (full.b - inactive.b) * frac,
+                    inactive.a + (full.a - inactive.a) * frac
+                );
             }
-            bars += "<span style=\"letter-spacing:-2px; color:" + color + ";\">|</span>";
+            bars += "<span style=\"letter-spacing:-2px; color:" + root._cssRgba(color) + ";\">|</span>";
+        }
+        return bars;
+    }
+
+    function _brightnessBarRichText(percent) {
+        const p = Math.max(1, Math.min(100, Number(percent)));
+        const total = 8;
+        const fillThr = ((p - 1) / 99) * total;
+        const barFg = root.config.barTextColor;
+        const inactive = Qt.rgba(barFg.r, barFg.g, barFg.b, 0.5);
+        const base = barFg;
+        const hi = root.config.overlayAccentColor;
+        let bars = "";
+        for (let i = 1; i <= total; i++) {
+            const full = i > 5 ? hi : base;
+            let color;
+            if (fillThr <= i - 1)
+                color = inactive;
+            else if (fillThr >= i)
+                color = full;
+            else {
+                const frac = fillThr - (i - 1);
+                color = Qt.rgba(
+                    inactive.r + (full.r - inactive.r) * frac,
+                    inactive.g + (full.g - inactive.g) * frac,
+                    inactive.b + (full.b - inactive.b) * frac,
+                    inactive.a + (full.a - inactive.a) * frac
+                );
+            }
+            bars += "<span style=\"letter-spacing:-2px; color:" + root._cssRgba(color) + ";\">|</span>";
         }
         return bars;
     }
@@ -327,6 +437,10 @@ PanelWindow {
         volumePercent = Math.max(0, Math.min(150, Math.round(percent)));
         if (muted !== undefined)
             volumeMuted = muted;
+    }
+
+    function _setLocalBrightness(percent) {
+        brightnessPercent = Math.max(1, Math.min(100, Math.round(percent)));
     }
 
     function _volumeMenuRichText(percent, muted, contentWidth) {
@@ -476,6 +590,8 @@ PanelWindow {
             sideMenuHugContentWidth = batterySideMenuWidth;
         else if (name === "audio")
             sideMenuHugContentWidth = audioSideMenuWidth;
+        else if (name === "brightness")
+            sideMenuHugContentWidth = brightnessSideMenuWidth;
         else if (name === "bt")
             sideMenuHugContentWidth = btSideMenuWidth;
         else
@@ -497,29 +613,41 @@ PanelWindow {
         root.scheduleStatusRefresh();
     }
 
+    function dismissWifiPasswordEntry() {
+        root.wifiConnectSsid = "";
+        root.wifiConnectPassword = "";
+        root.wifiConnectError = "";
+        root.wifiConnecting = false;
+    }
+
     function clickWifiNetwork(modelData) {
         if (modelData.active) {
             wifiDisconnectProc.exec({ command: ["bash", "-lc", "if command -v nmcli >/dev/null 2>&1; then dev=$(nmcli -t -f DEVICE,TYPE,STATE device status | awk -F: '$2==\"wifi\" && $3==\"connected\" {print $1; exit}'); [ -n \"$dev\" ] && nmcli device disconnect \"$dev\"; fi"] });
         } else {
             if (modelData.secured && root.wifiConnectSsid === modelData.ssid) {
-                root.wifiConnectSsid = "";
-                root.wifiConnectPassword = "";
+                dismissWifiPasswordEntry();
                 return;
             }
+            root.wifiConnectError = "";
             if (root.wifiConnectSsid !== modelData.ssid)
                 root.wifiConnectPassword = "";
             root.wifiConnectSsid = modelData.ssid;
             if (modelData.secured && !root.wifiConnectPassword)
                 return;
-            if (modelData.secured)
+            if (modelData.secured) {
+                root.wifiConnecting = true;
                 wifiConnectProc.exec({ command: ["bash", "-lc", "if command -v nmcli >/dev/null 2>&1; then nmcli dev wifi connect '" + root._shellQuoteSingle(modelData.ssid) + "' password '" + root._shellQuoteSingle(root.wifiConnectPassword) + "'; fi"] });
-            else
+            } else {
+                root.wifiConnecting = true;
                 wifiConnectProc.exec({ command: ["bash", "-lc", "if command -v nmcli >/dev/null 2>&1; then nmcli dev wifi connect '" + root._shellQuoteSingle(modelData.ssid) + "'; fi"] });
+            }
         }
         root.scheduleStatusRefresh();
     }
 
     function submitWifiPassword(modelData) {
+        root.wifiConnectError = "";
+        root.wifiConnecting = true;
         wifiConnectProc.exec({ command: ["bash", "-lc", "if command -v nmcli >/dev/null 2>&1; then nmcli dev wifi connect '" + root._shellQuoteSingle(modelData.ssid) + "' password '" + root._shellQuoteSingle(root.wifiConnectPassword) + "'; fi"] });
         root.scheduleStatusRefresh();
     }
@@ -564,12 +692,31 @@ PanelWindow {
         volRefreshTimer.restart();
     }
 
+    function audioSetVolumePercent(pct) {
+        const p = Math.max(0, Math.min(100, Math.round(Number(pct))));
+        volSetProc.exec({ command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then pactl set-sink-mute @DEFAULT_SINK@ 0; pactl set-sink-volume @DEFAULT_SINK@ " + p + "%; fi"] });
+        root._setLocalVolume(p, false);
+        volRefreshTimer.restart();
+    }
+
     function audioToggleMute() {
         volMuteProc.exec({ command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then pactl set-sink-mute @DEFAULT_SINK@ toggle; fi"] });
         volRefreshTimer.restart();
     }
 
     function audioOpenMixer() {
+    }
+
+    function brightnessStep(delta) {
+        const next = Math.max(1, Math.min(100, root.brightnessPercent + Number(delta)));
+        brightnessSetPercent(next);
+    }
+
+    function brightnessSetPercent(pct) {
+        const p = Math.max(1, Math.min(100, Math.round(Number(pct))));
+        briSetProc.exec({ command: ["bash", "-lc", "if command -v brightnessctl >/dev/null 2>&1; then brightnessctl set " + p + "%; fi"] });
+        root._setLocalBrightness(p);
+        brightnessRefreshTimer.restart();
     }
 
     function setDefaultAudioSink(name) {
@@ -814,7 +961,7 @@ PanelWindow {
 
         ColumnLayout {
             id: statusCol
-            spacing: 4
+            spacing: root.statusColVisualSpacing
             Layout.alignment: Qt.AlignHCenter
             Text {
                 visible: root._barOverlayEnabled("clock", true)
@@ -833,162 +980,253 @@ PanelWindow {
                 Layout.preferredHeight: root._barOverlayEnabled("clock", true) ? 10 : 0
                 Layout.minimumHeight: root._barOverlayEnabled("clock", true) ? 10 : 0
             }
-            Rectangle {
-                id: wifiChip
+            Item {
                 visible: root._barOverlayEnabled("wifi", true)
-                color: "transparent"
-                border.width: root.config.buttonBorderWidth
-                border.color: root.config.barAccentColor
-                radius: root.config.barRounding
+                Layout.fillWidth: true
+                implicitHeight: wifiChip.implicitHeight
                 implicitWidth: root.sideBarStatusColumnMaxW
-                implicitHeight: 22
-                Layout.alignment: Qt.AlignHCenter
-                Label {
-                    id: wifiLabel
-                    anchors.left: parent.left
-                    anchors.right: parent.right
+                Rectangle {
+                    id: wifiChip
+                    z: 0
+                    anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
-                    leftPadding: 2
-                    rightPadding: 2
-                    text: root.wifiText
-                    color: root.config.barTextColor
-                    horizontalAlignment: Text.AlignHCenter
-                    elide: Text.ElideRight
+                    color: "transparent"
+                    border.width: root.config.buttonBorderWidth
+                    border.color: root.config.barAccentColor
+                    radius: root.config.barRounding
+                    width: root.sideBarStatusColumnMaxW
+                    height: 22
+                    Label {
+                        id: wifiLabel
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        leftPadding: 2
+                        rightPadding: 2
+                        text: root.wifiText
+                        color: root.config.barTextColor
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                    }
                 }
                 MouseArea {
-                    anchors.fill: parent
+                    z: 1
+                    y: -root.statusColHitBleed
+                    height: parent.height + root.statusColVisualSpacing
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     hoverEnabled: true
                     onEntered: root.openStatusMenu("wifi", root._itemTopY(wifiChip))
                     onExited: root.queueStatusMenuClose("wifi")
                     onClicked: root.openStatusMenu("wifi", root._itemTopY(wifiChip))
                 }
             }
-            Rectangle {
-                id: btChip
+            Item {
                 visible: root._barOverlayEnabled("bluetooth", true)
-                color: "transparent"
-                border.width: root.config.buttonBorderWidth
-                border.color: root.config.barAccentColor
-                radius: root.config.barRounding
+                Layout.fillWidth: true
+                implicitHeight: btChip.implicitHeight
                 implicitWidth: 30
-                implicitHeight: 22
-                Layout.alignment: Qt.AlignHCenter
-                Label {
-                    id: btLabel
-                    anchors.centerIn: parent
-                    text: root.btText
-                    color: root.config.barTextColor
-                    elide: Text.ElideRight
+                Rectangle {
+                    id: btChip
+                    z: 0
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: "transparent"
+                    border.width: root.config.buttonBorderWidth
+                    border.color: root.config.barAccentColor
+                    radius: root.config.barRounding
+                    implicitWidth: 30
+                    implicitHeight: 22
+                    Label {
+                        id: btLabel
+                        anchors.centerIn: parent
+                        text: root.btText
+                        color: root.config.barTextColor
+                        elide: Text.ElideRight
+                    }
                 }
                 MouseArea {
-                    anchors.fill: parent
+                    z: 1
+                    y: -root.statusColHitBleed
+                    height: parent.height + root.statusColVisualSpacing
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     hoverEnabled: true
                     onEntered: root.openStatusMenu("bt", root._itemTopY(btChip))
                     onExited: root.queueStatusMenuClose("bt")
                     onClicked: root.openStatusMenu("bt", root._itemTopY(btChip))
                 }
             }
-            Rectangle {
-                id: volChip
+            Item {
                 visible: root._barOverlayEnabled("audio", true)
-                color: "transparent"
-                border.width: root.config.buttonBorderWidth
-                border.color: root.config.barAccentColor
-                radius: root.config.barRounding
+                Layout.fillWidth: true
+                implicitHeight: volChip.implicitHeight
                 implicitWidth: 26
-                implicitHeight: 66
-                Layout.alignment: Qt.AlignHCenter
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 2
-                    spacing: 0
+                Rectangle {
+                    id: volChip
+                    z: 0
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: "transparent"
+                    border.width: root.config.buttonBorderWidth
+                    border.color: root.config.barAccentColor
+                    radius: root.config.barRounding
+                    implicitWidth: 26
+                    implicitHeight: 66
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        spacing: 0
 
-                    Label {
-                        text: "VOL"
-                        color: root.config.barTextColor
-                        font.family: root.uiFontFamily
-                        font.pixelSize: Math.max(9, root.uiFontSize - 1)
-                        font.bold: true
-                        Layout.alignment: Qt.AlignHCenter
-                    }
+                        Label {
+                            text: "VOL"
+                            color: root.config.barTextColor
+                            font.family: root.uiFontFamily
+                            font.pixelSize: Math.max(9, root.uiFontSize - 1)
+                            font.bold: true
+                            Layout.alignment: Qt.AlignHCenter
+                        }
 
-                    Item {
-                        Layout.alignment: Qt.AlignHCenter
-                        implicitWidth: 18
-                        implicitHeight: 42
+                        Item {
+                            Layout.alignment: Qt.AlignHCenter
+                            implicitWidth: 18
+                            implicitHeight: 42
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.volText
-                            color: root.config.textColor
-                            textFormat: Text.RichText
-                            rotation: -90
-                            transformOrigin: Item.Center
-                            renderType: Text.NativeRendering
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.volText
+                                color: root.config.barTextColor
+                                textFormat: Text.RichText
+                                rotation: -90
+                                transformOrigin: Item.Center
+                                renderType: Text.NativeRendering
+                            }
                         }
                     }
                 }
                 MouseArea {
-                    anchors.fill: parent
+                    z: 1
+                    y: -root.statusColHitBleed
+                    height: parent.height + root.statusColVisualSpacing
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     hoverEnabled: true
                     onEntered: root.openStatusMenu("audio", root._itemTopY(volChip))
                     onExited: root.queueStatusMenuClose("audio")
-                    onClicked: mouse => {
-                        const ratio = Math.max(0, Math.min(1, 1 - (mouse.y / Math.max(1, volChip.height))));
-                        const pct = Math.round(ratio * 100);
-                        root._setLocalVolume(pct);
-                        volSetProc.exec({ command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then pactl set-sink-volume @DEFAULT_SINK@ " + pct + "%; fi"] });
-                        volRefreshTimer.restart();
-                    }
-                    onWheel: wheel => {
-                        const dir = wheel.angleDelta.y > 0 ? "+2%" : "-2%";
-                        volStepProc.exec({ command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then pactl set-sink-volume @DEFAULT_SINK@ " + dir + "; fi"] });
-                        root._setLocalVolume(root.volumePercent + (wheel.angleDelta.y > 0 ? 2 : -2));
-                        volRefreshTimer.restart();
-                        wheel.accepted = true;
-                    }
+                    onClicked: root.openStatusMenu("audio", root._itemTopY(volChip))
                 }
             }
-            Rectangle {
-                id: batChip
-                visible: root._barOverlayEnabled("battery", true)
-                color: "transparent"
-                border.width: root.config.buttonBorderWidth
-                border.color: root.config.barAccentColor
-                radius: root.config.barRounding
-                implicitWidth: 28
-                implicitHeight: 72
-                Layout.alignment: Qt.AlignHCenter
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 2
-                    spacing: 0
+            Item {
+                visible: root._barOverlayEnabled("brightness", true)
+                Layout.fillWidth: true
+                implicitHeight: briChip.implicitHeight
+                implicitWidth: 26
+                Rectangle {
+                    id: briChip
+                    z: 0
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: "transparent"
+                    border.width: root.config.buttonBorderWidth
+                    border.color: root.config.barAccentColor
+                    radius: root.config.barRounding
+                    implicitWidth: 26
+                    implicitHeight: 66
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        spacing: 0
 
-                    Label {
-                        text: "BAT"
-                        color: root.config.barTextColor
-                        font.family: root.uiFontFamily
-                        font.pixelSize: Math.max(9, root.uiFontSize - 1)
-                        font.bold: true
-                        Layout.alignment: Qt.AlignHCenter
-                    }
+                        Label {
+                            text: "BRT"
+                            color: root.config.barTextColor
+                            font.family: root.uiFontFamily
+                            font.pixelSize: Math.max(9, root.uiFontSize - 1)
+                            font.bold: true
+                            Layout.alignment: Qt.AlignHCenter
+                        }
 
-                    BatterySegmentIndicator {
-                        Layout.alignment: Qt.AlignHCenter
-                        percent: root.batteryPercent
-                        textColor: root.config.textColor
-                        segment0Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorCritical
-                        segment1Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorLow
-                        segment2Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorMedium
-                        segment3Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorFull
-                        barRadius: Math.max(0, Math.min(root.config.rounding, 6))
-                        segmentWidth: 12
-                        segmentHeight: 4
-                        segmentSpacing: 2
+                        Item {
+                            Layout.alignment: Qt.AlignHCenter
+                            implicitWidth: 18
+                            implicitHeight: 42
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.briText
+                                color: root.config.barTextColor
+                                textFormat: Text.RichText
+                                rotation: -90
+                                transformOrigin: Item.Center
+                                renderType: Text.NativeRendering
+                            }
+                        }
                     }
                 }
                 MouseArea {
-                    anchors.fill: parent
+                    z: 1
+                    y: -root.statusColHitBleed
+                    height: parent.height + root.statusColVisualSpacing
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    hoverEnabled: true
+                    onEntered: root.openStatusMenu("brightness", root._itemTopY(briChip))
+                    onExited: root.queueStatusMenuClose("brightness")
+                    onClicked: root.openStatusMenu("brightness", root._itemTopY(briChip))
+                }
+            }
+            Item {
+                visible: root._barOverlayEnabled("battery", true)
+                Layout.fillWidth: true
+                implicitHeight: batChip.implicitHeight
+                implicitWidth: 28
+                Rectangle {
+                    id: batChip
+                    z: 0
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: "transparent"
+                    border.width: root.config.buttonBorderWidth
+                    border.color: root.config.barAccentColor
+                    radius: root.config.barRounding
+                    implicitWidth: 28
+                    implicitHeight: 72
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        spacing: 0
+
+                        Label {
+                            text: "BAT"
+                            color: root.config.barTextColor
+                            font.family: root.uiFontFamily
+                            font.pixelSize: Math.max(9, root.uiFontSize - 1)
+                            font.bold: true
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        BatterySegmentIndicator {
+                            Layout.alignment: Qt.AlignHCenter
+                            percent: root.batteryPercent
+                            textColor: root.config.barTextColor
+                            accentColor: root.config.barAccentColor
+                            segment0Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorCritical
+                            segment1Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorLow
+                            segment2Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorMedium
+                            segment3Color: root.batteryCharging ? root.config.overlayBatteryBarColorCharging : root.config.overlayBatteryBarColorFull
+                            barRadius: Math.max(0, Math.min(root.config.rounding, 6))
+                            segmentWidth: 12
+                            segmentHeight: 4
+                            segmentSpacing: 2
+                        }
+                    }
+                }
+                MouseArea {
+                    z: 1
+                    y: -root.statusColHitBleed
+                    height: parent.height + root.statusColVisualSpacing
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     hoverEnabled: true
                     onEntered: root.openStatusMenu("battery", root._itemTopY(batChip))
                     onExited: root.queueStatusMenuClose("battery")
@@ -1047,7 +1285,10 @@ PanelWindow {
             items: root.workspacePreviewItems
             previewMonitor: root._workspacePreviewMonitor(root.workspacePreviewDisplayId)
 
-            Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            Behavior on x {
+                enabled: root.config.uiAnimationsEnabled
+                NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+            }
         }
 
         HoverHandler {
@@ -1073,7 +1314,7 @@ PanelWindow {
 
         Timer {
             id: workspacePreviewHideTimer
-            interval: 170
+            interval: root.config.uiAnimationsEnabled ? root.config.overlaySlideDurationMs + 20 : 1
             repeat: false
             onTriggered: {
                 if (!workspacePreviewWindow.shown) {
@@ -1090,20 +1331,29 @@ PanelWindow {
         property bool shown: root.activeStatusMenu.length > 0
         property bool mounted: shown
         property bool presented: shown
-        visible: true
+        property real slideTravelX: 200
+        readonly property int statusSlideDurationMs: root.config.overlaySlideDurationMs
+        visible: sideStatusMenu.mounted
         onShownChanged: {
             if (shown) {
                 mounted = true;
-                presented = false;
                 sideStatusMenuHideTimer.stop();
-                sideStatusMenuPresentTimer.restart();
+                slideTravelX = Math.max(120, sideStatusContent.implicitWidth + 24);
+                presented = false;
+                Qt.callLater(function () {
+                    if (!sideStatusMenu.shown)
+                        return;
+                    slideTravelX = Math.max(120, sideStatusContent.implicitWidth + 24);
+                    sideStatusMenuPresentTimer.restart();
+                });
             } else if (mounted) {
+                slideTravelX = Math.max(120, sideStatusContent.implicitWidth + 24);
                 presented = false;
                 sideStatusMenuHideTimer.restart();
             }
         }
-        focusable: root.activeStatusMenu === "wifi"
-        WlrLayershell.keyboardFocus: root.activeStatusMenu === "wifi" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        focusable: root.statusMenuPanelId === "wifi"
+        WlrLayershell.keyboardFocus: root.statusMenuPanelId === "wifi" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         anchors {
             top: true
             left: true
@@ -1133,70 +1383,81 @@ PanelWindow {
 
             Rectangle {
                 id: sidePanel
-                readonly property real hiddenX: -(parent.width + 8)
                 width: parent.width
                 height: parent.height
-                x: sideStatusMenu.presented ? 0 : hiddenX
-                color: root.config.overlayBackgroundColor
-                border.color: root.config.borderColor
-                border.width: root.config.overlayBorderWidth
                 radius: root.config.overlayRounding
-                Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                color: root.config.borderColor
+                transform: Translate {
+                    x: sideStatusMenu.presented ? 0 : -sideStatusMenu.slideTravelX
+                    Behavior on x {
+                        enabled: root.config.uiAnimationsEnabled
+                        NumberAnimation {
+                            duration: sideStatusMenu.statusSlideDurationMs
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
 
                 Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: root.config.overlayBorderWidth
+                    radius: Math.max(0, root.config.overlayRounding - root.config.overlayBorderWidth)
+                    color: root.config.overlayBackgroundColor
+                }
+
+                Column {
+                    id: sideStatusContent
                     anchors.left: parent.left
-                    anchors.right: parent.right
                     anchors.top: parent.top
-                    height: Math.max(1, root.config.overlayBorderWidth)
-                    color: root.config.panelColor
-                }
-            }
+                    anchors.margins: 8
+                    spacing: 8
 
-            Column {
-                id: sideStatusContent
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.margins: 8
-                spacing: 8
+                    Label {
+                        width: root.sideMenuHugContentWidth
+                        text: root.statusMenuPanelId === "wifi" ? root.networkDisplayText
+                            : root.statusMenuPanelId === "bt" ? "BLUETOOTH"
+                            : root.statusMenuPanelId === "battery" ? "BATTERY"
+                            : root.statusMenuPanelId === "audio" ? "AUDIO"
+                            : root.statusMenuPanelId === "brightness" ? "BRIGHTNESS"
+                            : ""
+                        color: root.config.overlayAccentColor
+                        font.bold: true
+                        elide: Text.ElideRight
+                    }
+                    Status.WifiMenuContent {
+                        visible: root.statusMenuPanelId === "wifi"
+                        host: root
+                        listHeight: 250
+                    }
 
-                Label {
-                    width: root.sideMenuHugContentWidth
-                    text: root.activeStatusMenu === "wifi" ? root.networkDisplayText
-                        : root.activeStatusMenu === "bt" ? "BLUETOOTH"
-                        : root.activeStatusMenu === "battery" ? "BATTERY"
-                        : root.activeStatusMenu === "audio" ? "AUDIO"
-                        : ""
-                    color: root.config.overlayAccentColor
-                    font.bold: true
-                    elide: Text.ElideRight
-                }
-                Status.WifiMenuContent {
-                    visible: root.activeStatusMenu === "wifi"
-                    host: root
-                    listHeight: 250
-                }
+                    Status.BluetoothMenuContent {
+                        visible: root.statusMenuPanelId === "bt"
+                        host: root
+                        toggleWidth: 34
+                        toggleHeight: 18
+                        knobSize: 12
+                        listHeight: 160
+                    }
 
-                Status.BluetoothMenuContent {
-                    visible: root.activeStatusMenu === "bt"
-                    host: root
-                    toggleWidth: 34
-                    toggleHeight: 18
-                    knobSize: 12
-                    listHeight: 160
-                }
+                    Status.AudioMenuContent {
+                        visible: root.statusMenuPanelId === "audio"
+                        host: root
+                        outputListHeight: 100
+                        inputListHeight: 92
+                        menuFontBoost: 7
+                        showMixer: false
+                    }
 
-                Status.AudioMenuContent {
-                    visible: root.activeStatusMenu === "audio"
-                    host: root
-                    outputListHeight: 100
-                    inputListHeight: 92
-                    menuFontBoost: 7
-                    showMixer: false
-                }
+                    Status.BrightnessMenuContent {
+                        visible: root.statusMenuPanelId === "brightness"
+                        host: root
+                        menuFontBoost: 7
+                    }
 
-                Status.BatteryMenuContent {
-                    visible: root.activeStatusMenu === "battery"
-                    host: root
+                    Status.BatteryMenuContent {
+                        visible: root.statusMenuPanelId === "battery"
+                        host: root
+                    }
                 }
             }
         }
@@ -1213,10 +1474,11 @@ PanelWindow {
 
         Timer {
             id: sideStatusMenuHideTimer
-            interval: 170
+            interval: root.config.uiAnimationsEnabled ? root.config.overlaySlideDurationMs + 100 : 1
             repeat: false
             onTriggered: {
                 if (!sideStatusMenu.shown) {
+                    root.statusMenuPanelId = "";
                     sideStatusMenu.presented = false;
                     sideStatusMenu.mounted = false;
                 }
@@ -1228,7 +1490,24 @@ PanelWindow {
     Process { id: volStepProc }
     Process { id: volSetProc }
     Process { id: volMuteProc }
-    Process { id: wifiConnectProc }
+    Process {
+        id: wifiConnectProc
+        stderr: StdioCollector {
+            id: wifiConnectStderrCollector
+            waitForEnd: true
+        }
+        onExited: (exitCode, exitStatus) => {
+            root.wifiConnecting = false;
+            root.scheduleStatusRefresh();
+            if (exitCode === 0) {
+                root.wifiConnectError = "";
+                root.wifiConnectPassword = "";
+                return;
+            }
+            const raw = String(wifiConnectStderrCollector.text || "").trim();
+            root.wifiConnectError = barState.humanizeWifiConnectError(raw);
+        }
+    }
     Process { id: wifiDisconnectProc }
     Process { id: wifiToggleProc }
     Process { id: btConnectProc }
@@ -1237,6 +1516,7 @@ PanelWindow {
     Process { id: btDiscoverableProc }
     Process { id: audioSinkSetProc }
     Process { id: audioSourceSetProc }
+    Process { id: briSetProc }
     Timer {
         id: workspacePreviewCloseTimer
         interval: root.config.hoverReleaseMs
@@ -1256,7 +1536,7 @@ PanelWindow {
 
     Timer {
         id: sideMenuCloseTimer
-        interval: root.config.hoverReleaseMs
+        interval: root.statusMenuCloseDelayMs
         repeat: false
         onTriggered: {
             if (root.statusMenuInputFocused)
@@ -1275,11 +1555,22 @@ PanelWindow {
         }
     }
 
+    Timer {
+        id: brightnessRefreshTimer
+        interval: 140
+        repeat: false
+        onTriggered: {
+            barState.refreshBrightnessData();
+        }
+    }
+
     Connections {
         target: barState
         function onActiveStatusMenuChanged() {
-            if (root.activeStatusMenu !== "wifi")
+            if (root.activeStatusMenu !== "wifi") {
                 root.statusMenuInputFocused = false;
+                root.dismissWifiPasswordEntry();
+            }
             root._applyFontRecursive(sideStatusMenu);
         }
         function onFocusedWorkspaceIdChanged() {

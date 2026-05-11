@@ -6,7 +6,6 @@ import ".." as LegacyTabs
 Item {
     id: root
     required property QtObject control
-    property bool animationsEnabled: true
     property int scalingPercent: 100
 
     RowLayout {
@@ -53,7 +52,22 @@ Item {
                     Layout.fillWidth: true
                     implicitHeight: 34
                     Label { text: root.control.config.formatUiText("Animations"); Layout.fillWidth: true; color: root.control.config.textColor }
-                    Switch { checked: root.animationsEnabled; onToggled: root.animationsEnabled = checked }
+                    Switch {
+                        checked: root.control.config.uiAnimationsEnabled
+                        onToggled: root.control.config.uiAnimationsEnabled = checked
+                    }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    implicitHeight: 34
+                    Label { text: root.control.config.formatUiText("Overlay slide (ms)"); Layout.fillWidth: true; color: root.control.config.textColor }
+                    SpinBox {
+                        from: 80
+                        to: 800
+                        stepSize: 20
+                        value: root.control.config.overlaySlideDurationMs
+                        onValueModified: root.control.config.overlaySlideDurationMs = value
+                    }
                 }
                 RowLayout {
                     Layout.fillWidth: true

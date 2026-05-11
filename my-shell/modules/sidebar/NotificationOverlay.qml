@@ -138,14 +138,17 @@ PanelWindow {
         border.width: root.config.quickSettingsNotificationPopupBorderWidth
         radius: root.config.overlayRounding
         opacity: root.popupVisible ? root.config.panelOpacity : 0
-        y: root.popupVisible ? 0 : 24
 
         Behavior on opacity {
             NumberAnimation { duration: 120 }
         }
 
-        Behavior on y {
-            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+        transform: Translate {
+            y: root.popupVisible ? 0 : 24
+            Behavior on y {
+                enabled: root.config.uiAnimationsEnabled
+                NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+            }
         }
 
         ColumnLayout {

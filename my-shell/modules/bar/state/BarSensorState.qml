@@ -23,6 +23,7 @@ Item {
     property string btDetailText: "-"
     property int volumePercent: 0
     property bool volumeMuted: false
+    property int brightnessPercent: 50
     property bool networkEnabled: true
     property string networkDisplayText: "OFFLINE"
     property string networkTypeText: "Offline"
@@ -35,8 +36,12 @@ Item {
     property string batteryTimeText: "-"
     property string batteryStatusText: "-"
     property string activeStatusMenu: ""
+    /// Which menu the status panel still draws during slide-out close (cleared after hide animation).
+    property string statusMenuPanelId: ""
     property string wifiConnectSsid: ""
     property string wifiConnectPassword: ""
+    property string wifiConnectError: ""
+    property bool wifiConnecting: false
     property string btDeviceTarget: ""
     property var wifiNetworks: []
     property var btDevices: []
@@ -56,6 +61,41 @@ Item {
         return value.length > 0 && value !== "open" && value !== "--" && value !== "none";
     }
 
+    /// Turn NetworkManager / nmcli stderr into short, plain-language text.
+    function humanizeWifiConnectError(rawText) {
+        const raw = String(rawText || "").trim();
+        const lower = raw.toLowerCase();
+        const T = function (s) {
+            return root.config.formatUiText(s);
+        };
+        if (!lower)
+            return T("Could not connect. Please try again.");
+
+        if ((lower.includes("secrets were required") || lower.includes("secrets required")) && lower.includes("not provided"))
+            return T("This network needs a password. Enter it above, then tap Connect.");
+
+        if (lower.includes("no secrets were provided"))
+            return T("This network needs a password. Enter it above, then tap Connect.");
+
+        if ((lower.includes("802-11-wireless-security") || lower.includes(".psk") || lower.includes(" psk"))
+            && (lower.includes("invalid") || lower.includes("propery") || lower.includes("property")))
+            return T("The password was not accepted. Check that it matches this network and try again.");
+
+        if (lower.includes("invalid key") || lower.includes("wrong psk") || lower.includes("pre-shared key"))
+            return T("The password was not accepted. Check that it matches this network and try again.");
+
+        if (lower.includes("authentication failed") || lower.includes("not authorized"))
+            return T("Sign-in failed. The password may be wrong, or the network may use a different security type.");
+
+        if (lower.includes("no network with ssid") || lower.includes("network not found"))
+            return T("That network was not found. Tap Rescan, then try again.");
+
+        if (lower.includes("device or resource busy"))
+            return T("The Wi‑Fi adapter is busy. Wait a moment and try again.");
+
+        return T("Could not connect. If the network is password-protected, check the password and try again.");
+    }
+
     function refreshStatusMenuData() {
         if (activeStatusMenu === "wifi") {
             wifiProc.exec({ command: wifiProc.command });
@@ -73,6 +113,8 @@ Item {
             audioDetailProc.exec({ command: audioDetailProc.command });
             audioOutputsProc.exec({ command: audioOutputsProc.command });
             audioInputsProc.exec({ command: audioInputsProc.command });
+        } else if (activeStatusMenu === "brightness") {
+            brightnessProc.exec({ command: brightnessProc.command });
         }
     }
 
@@ -85,8 +127,13 @@ Item {
         audioDetailProc.exec({ command: audioDetailProc.command });
     }
 
+    function refreshBrightnessData() {
+        brightnessProc.exec({ command: brightnessProc.command });
+    }
+
     function handleStatusMenuOpened(name) {
         activeStatusMenu = name;
+        statusMenuPanelId = name;
         statusMenuRefreshTimer.stop();
         if (name === "wifi") {
             wifiDetailProc.running = true;
@@ -100,6 +147,8 @@ Item {
             audioDetailProc.running = true;
             audioOutputsProc.running = true;
             audioInputsProc.running = true;
+        } else if (name === "brightness") {
+            brightnessProc.running = true;
         }
     }
 
@@ -268,18 +317,34 @@ Item {
     }
 
     Process { id: batteryProc
-        command: ["bash", "-lc", "if command -v acpi >/dev/null 2>&1; then pct=$(acpi -b | awk -F', ' 'NR==1{gsub(/%/,\"\",$2); print $2}'); echo \"${pct:-0}\"; else bat=$(ls /sys/class/power_supply 2>/dev/null | awk '/^BAT/{print; exit}'); if [ -n \"$bat\" ] && [ -r \"/sys/class/power_supply/$bat/capacity\" ]; then cat /sys/class/power_supply/$bat/capacity; else echo '0'; fi; fi"]
+        command: ["bash", "-lc", "if command -v acpi >/dev/null 2>&1; then line=$(acpi -b | awk 'NR==1{print}'); if [ -n \"$line\" ]; then pct=$(printf '%s' \"$line\" | awk -F', ' '{gsub(/%/,\"\",$2); print $2}'); st=$(printf '%s' \"$line\" | awk -F': ' '{print $2}' | awk -F', ' '{print $1}'); printf '%s|%s\\n' \"${pct:-0}\" \"${st:-Unknown}\"; else printf '0|Unknown\\n'; fi; else bat=$(ls /sys/class/power_supply 2>/dev/null | awk '/^BAT/{print; exit}'); if [ -n \"$bat\" ] && [ -r \"/sys/class/power_supply/$bat/capacity\" ]; then pct=$(cat \"/sys/class/power_supply/$bat/capacity\"); st=Unknown; [ -r \"/sys/class/power_supply/$bat/status\" ] && st=$(cat \"/sys/class/power_supply/$bat/status\"); printf '%s|%s\\n' \"${pct:-0}\" \"$st\"; else printf '0|Unknown\\n'; fi; fi"]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: {
-                const p = Number(String(text).trim()) || 0;
+                const raw = String(text).trim();
+                const parts = raw.split("|");
+                const p = Number(String(parts[0] || "0").trim()) || 0;
                 root.batteryPercent = p;
+                root.batteryStatusText = String(parts[1] || "Unknown").trim() || "Unknown";
+            }
+        }
+    }
+
+    Process { id: brightnessProc
+        command: ["bash", "-lc", "if command -v brightnessctl >/dev/null 2>&1; then brightnessctl -m | awk -F, '{gsub(/%/,\"\",$4); print $4}'; else echo '50'; fi"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: {
+                const raw = Number(String(text).trim());
+                if (!Number.isFinite(raw))
+                    return;
+                root.brightnessPercent = Math.max(1, Math.min(100, Math.round(raw)));
             }
         }
     }
 
     Process { id: audioProc
-        command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then v=$(pactl get-sink-volume @DEFAULT_SINK@ | awk '{print $5}' | tr -d '%' | head -n1); m=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}'); echo \"${v:-0} ${m:-no}\"; else echo '0 no'; fi"]
+        command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then v=$(pactl get-sink-volume @DEFAULT_SINK@ | awk 'NR==1{last=\"\";for(i=1;i<=NF;i++)if($i ~ /%/){v=$i;gsub(/%/,\"\",v);last=v}if(last!=\"\")print last}'); m=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}'); echo \"${v:-0} ${m:-no}\"; else echo '0 no'; fi"]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: {
@@ -287,7 +352,7 @@ Item {
                 const parsed = Number(parts[0]);
                 if (!Number.isFinite(parsed))
                     return;
-                root.volumePercent = Math.max(0, Math.min(150, parsed));
+                root.volumePercent = Math.max(0, Math.min(150, Math.round(parsed)));
                 root.volumeMuted = String(parts[1] || "no") === "yes";
             }
         }
@@ -395,14 +460,14 @@ Item {
     }
 
     Process { id: audioDetailProc
-        command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then v=$(pactl get-sink-volume @DEFAULT_SINK@ | awk '{print $5}' | tr -d '%' | head -n1); m=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}'); echo \"Volume: ${v:-0}%\\nMuted: ${m:-no}\"; else echo 'Audio info unavailable'; fi"]
+        command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then v=$(pactl get-sink-volume @DEFAULT_SINK@ | awk 'NR==1{last=\"\";for(i=1;i<=NF;i++)if($i ~ /%/){v=$i;gsub(/%/,\"\",v);last=v}if(last!=\"\")print last}'); m=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}'); echo \"Volume: ${v:-0}%\\nMuted: ${m:-no}\"; else echo 'Audio info unavailable'; fi"]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: {
                 const t = String(text).trim();
-                const m = t.match(/Volume:\\s*([0-9]+)/);
+                const m = t.match(/Volume:\s*([0-9]+(?:\.[0-9]+)?)/);
                 if (m)
-                    root.volumePercent = Number(m[1]);
+                    root.volumePercent = Math.max(0, Math.min(150, Math.round(Number(m[1]))));
             }
         }
     }
@@ -473,6 +538,7 @@ Item {
         onTriggered: {
             dateProc.exec({ command: dateProc.command });
             audioProc.exec({ command: audioProc.command });
+            batteryProc.exec({ command: batteryProc.command });
             if (root.includeLocks)
                 locksProc.exec({ command: locksProc.command });
         }
@@ -486,7 +552,7 @@ Item {
         onTriggered: {
             wifiProc.exec({ command: wifiProc.command });
             btProc.exec({ command: btProc.command });
-            batteryProc.exec({ command: batteryProc.command });
+            brightnessProc.exec({ command: brightnessProc.command });
         }
     }
 

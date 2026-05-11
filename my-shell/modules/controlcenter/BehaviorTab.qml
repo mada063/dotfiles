@@ -15,31 +15,6 @@ ScrollView {
         width: parent.width
         spacing: 0
 
-        // ── Typography (titles & button labels) ───────────────────────
-
-        Label { text: _T("Typography"); color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 4 }
-
-        Label {
-            text: _T("Use standard casing, or all caps for titles, buttons, and other chrome labels (not content such as track titles).")
-            color: root.control.config.mutedTextColor
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            Layout.bottomMargin: 8
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            implicitHeight: 34
-            spacing: 12
-            Label { text: _T("All caps"); color: root.control.config.textColor; Layout.fillWidth: true; verticalAlignment: Text.AlignVCenter }
-            Switch {
-                checked: root.control.config.uiTextStyle === "uppercase"
-                onToggled: root.control.config.uiTextStyle = checked ? "uppercase" : "standard"
-            }
-        }
-
-        Item { implicitHeight: 18 }
-
         // ── Interaction ───────────────────────────────────────────────
 
         Label { text: _T("Interaction"); color: root.control.config.accentColor; font.bold: true; Layout.bottomMargin: 4 }

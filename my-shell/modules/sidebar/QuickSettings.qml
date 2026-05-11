@@ -270,7 +270,12 @@ Item {
 
         Rectangle {
             id: quickMenu
-            readonly property real hiddenY: parent.height + 8
+            // When menuPanel height is still 0 on first frame, still slide by at least content height.
+            readonly property real hiddenY: {
+                const ph = menuPanel.height;
+                const inner = quickMenu.implicitHeight + root.edgeMargin * 2;
+                return Math.max(ph, inner, root.menuMinH + root.edgeMargin * 2) + 8;
+            }
             width: root.menuW
             implicitHeight: Math.max(root.menuMinH, quickMenuContent.implicitHeight + 28)
             height: implicitHeight
@@ -283,7 +288,8 @@ Item {
             z: 1
             y: root.quickSettingsPresented ? root.edgeMargin : hiddenY
             Behavior on y {
-                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                enabled: root.config.uiAnimationsEnabled
+                NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
             }
 
             MouseArea {
@@ -421,6 +427,7 @@ Item {
                             // Bar
                             { icon: "\u23F0",                     label: "Clock",                     barId: "clock" },
                             { icon: "\uD83D\uDD0A",              label: "Audio",                     barId: "audio" },
+                            { icon: "\uD83D\uDD06",              label: "Brightness",                barId: "brightness" },
                             { icon: "\uD83D\uDD0B",              label: "Battery",                   barId: "battery" },
                             { icon: "\u21EA",                    label: "Lock State",                barId: "locks" },
                             // Quick Settings
@@ -695,7 +702,7 @@ Item {
 
     Timer {
         id: quickSettingsHideTimer
-        interval: 170
+        interval: root.config.uiAnimationsEnabled ? root.config.overlaySlideDurationMs + 20 : 1
         repeat: false
         onTriggered: {
             if (!root.quickSettingsActive) {

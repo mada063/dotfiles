@@ -14,12 +14,17 @@ PanelWindow {
     readonly property bool shown: root.shell.controlCenterVisible
     readonly property string uiFontFamily: root.config.fontFamily
     readonly property int uiFontSize: root.config.fontPixelSize
+    readonly property var _anchorScreen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    readonly property real _shellW: Math.max(root.width, _anchorScreen ? _anchorScreen.width : 1920)
+    readonly property real _shellH: Math.max(root.height, _anchorScreen ? _anchorScreen.height : 1080)
 
     property int currentSectionIndex: 0
     property int displayedSectionIndex: 0
     property int previousSectionIndex: 0
     property int slideDirection: 1
     property bool switching: false
+    // Independent from overlaySlideDurationMs: fixed tab page scroll timing.
+    readonly property int settingsTabScrollDurationMs: 320
 
     readonly property var settingsSections: [
         { title: "Wifi" },
@@ -72,9 +77,9 @@ PanelWindow {
         root.switching = true;
         outgoingLoader.sourceComponent = root.sectionComponents[root.previousSectionIndex];
         incomingLoader.sourceComponent = root.sectionComponents[root.currentSectionIndex];
-        incomingLoader.x = root.slideDirection * contentViewport.width;
-        incomingLoader.opacity = 0.85;
-        outgoingLoader.x = 0;
+        incomingLoader.y = Math.max(36, contentViewport.height * 0.35);
+        incomingLoader.opacity = 1;
+        outgoingLoader.y = 0;
         outgoingLoader.opacity = 1;
         tabSwitchAnim.restart();
     }
@@ -91,7 +96,10 @@ PanelWindow {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, root.config.overlayDimOpacity)
         opacity: root.shown ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 150 } }
+        Behavior on opacity {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -101,19 +109,31 @@ PanelWindow {
 
     Item {
         id: settingsContainer
-        width: Math.min(root.width - 64, 1240)
-        height: Math.min(root.height - 72, 840)
-        x: root.shown ? (root.width - width) / 2 : root.width + 40
-        y: root.shown ? (root.height - height) / 2 : root.height + 40
+        width: Math.min(Math.max(0, _shellW - 64), 1240)
+        height: Math.min(Math.max(0, _shellH - 72), 840)
+        x: root.shown ? (_shellW - width) / 2 : _shellW + 40
+        y: root.shown ? (_shellH - height) / 2 : _shellH + 40
         scale: root.shown ? 1 : 0.95
         opacity: root.shown ? root.config.panelOpacity : 0
         z: 2
 
-        // Animate stable container only to avoid content jumps.
-        Behavior on x { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-        Behavior on y { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-        Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
-        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+        // Animate stable container only to avoid content jumps (matches overlay slide duration).
+        Behavior on x {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
+        Behavior on y {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
+        Behavior on scale {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
+        Behavior on opacity {
+            enabled: root.config.uiAnimationsEnabled
+            NumberAnimation { duration: root.config.overlaySlideDurationMs; easing.type: Easing.OutCubic }
+        }
 
         Rectangle {
             id: panel
@@ -249,39 +269,25 @@ PanelWindow {
 
         NumberAnimation {
             target: outgoingLoader
-            property: "x"
-            to: -root.slideDirection * contentViewport.width * 0.35
-            duration: 240
-            easing.type: Easing.OutCubic
-        }
-        NumberAnimation {
-            target: outgoingLoader
-            property: "opacity"
-            to: 0
-            duration: 220
+            property: "y"
+            to: -Math.max(36, contentViewport.height * 0.35)
+            duration: root.config.uiAnimationsEnabled ? root.settingsTabScrollDurationMs : 0
             easing.type: Easing.OutCubic
         }
         NumberAnimation {
             target: incomingLoader
-            property: "x"
+            property: "y"
             to: 0
-            duration: 260
-            easing.type: Easing.OutCubic
-        }
-        NumberAnimation {
-            target: incomingLoader
-            property: "opacity"
-            to: 1
-            duration: 260
+            duration: root.config.uiAnimationsEnabled ? root.settingsTabScrollDurationMs : 0
             easing.type: Easing.OutCubic
         }
 
         onFinished: {
             root.displayedSectionIndex = root.currentSectionIndex;
             outgoingLoader.sourceComponent = undefined;
-            outgoingLoader.x = 0;
+            outgoingLoader.y = 0;
             outgoingLoader.opacity = 1;
-            incomingLoader.x = 0;
+            incomingLoader.y = 0;
             incomingLoader.opacity = 1;
             root.switching = false;
         }

@@ -37,26 +37,75 @@ PanelWindow {
     property bool volumeMuted: false
     property int brightnessValue: 40
     property bool suppressEdgeTrigger: false
+
+    property real volumeVisual: 0
+    property bool volumeVisualReady: false
+    property real brightnessVisual: 0
+    property bool brightnessVisualReady: false
+
+    Behavior on volumeVisual {
+        enabled: root.volumeVisualReady
+        NumberAnimation {
+            duration: 260
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    Behavior on brightnessVisual {
+        enabled: root.brightnessVisualReady
+        NumberAnimation {
+            duration: 260
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    Connections {
+        target: root
+        function onVolumeValueChanged() {
+            if (!root.volumeVisualReady)
+                return;
+            root.volumeVisual = Math.max(0, Math.min(100, root.volumeValue));
+        }
+        function onBrightnessValueChanged() {
+            if (!root.brightnessVisualReady)
+                return;
+            root.brightnessVisual = Math.max(1, Math.min(100, root.brightnessValue));
+        }
+    }
     readonly property int triggerZoneHeight: Math.min(root.height, Math.max(180, Math.min(320, panel.implicitHeight)))
     readonly property string uiFontFamily: root.shellConfig.fontFamily
     readonly property int uiFontSize: root.shellConfig.fontPixelSize
 
+    function _cssRgba(c) {
+        return "rgba(" + Math.round(255 * c.r) + "," + Math.round(255 * c.g) + "," + Math.round(255 * c.b) + "," + c.a + ")";
+    }
+
     function _flippedBars(percent, muted, accentColor) {
         const p = Math.max(0, Math.min(100, Number(percent)));
         const total = 10;
-        const on = Math.round((p / 100) * total);
+        const fillThr = (p / 100) * total;
         const inactive = Qt.rgba(root.shellConfig.textColor.r, root.shellConfig.textColor.g, root.shellConfig.textColor.b, 0.5);
+        const base = root.shellConfig.textColor;
+        const hi = accentColor;
+        const mutedFull = Qt.color("#6b7280");
         let out = "";
         for (let i = 1; i <= total; i++) {
-            const active = i <= on;
-            let color = inactive;
-            if (active) {
-                if (muted)
-                    color = "#6b7280";
-                else
-                    color = i > Math.max(1, total - 3) ? accentColor : root.shellConfig.textColor;
+            const full = muted ? mutedFull : (i > Math.max(1, total - 3) ? hi : base);
+            let color;
+            if (fillThr <= i - 1)
+                color = inactive;
+            else if (fillThr >= i)
+                color = full;
+            else {
+                const frac = fillThr - (i - 1);
+                color = Qt.rgba(
+                    inactive.r + (full.r - inactive.r) * frac,
+                    inactive.g + (full.g - inactive.g) * frac,
+                    inactive.b + (full.b - inactive.b) * frac,
+                    inactive.a + (full.a - inactive.a) * frac
+                );
             }
-            out += "<span style=\"letter-spacing:-2px; color:" + color + ";\">|</span>";
+            out += "<span style=\"letter-spacing:-2px; color:" + root._cssRgba(color) + ";\">|</span>";
         }
         return out;
     }
@@ -106,6 +155,10 @@ PanelWindow {
         }
     }
     Component.onCompleted: {
+        root.volumeVisual = Math.max(0, Math.min(100, root.volumeValue));
+        root.brightnessVisual = Math.max(1, Math.min(100, root.brightnessValue));
+        root.volumeVisualReady = true;
+        root.brightnessVisualReady = true;
         _applyFontRecursive(root);
         suppressEdgeTrigger = true;
         startupEdgeGuard.start();
@@ -122,19 +175,22 @@ PanelWindow {
             right: parent.right
             verticalCenter: parent.verticalCenter
         }
-        x: root.targetOffset
+        // Translate avoids anchor+Item.x conflict (x is ignored when horizontal anchor is set).
+        transform: Translate {
+            x: root.targetOffset
+            Behavior on x {
+                enabled: root.shellConfig.uiAnimationsEnabled
+                NumberAnimation {
+                    duration: root.shellConfig.overlaySlideDurationMs
+                    easing.type: Easing.OutCubic
+                }
+            }
+        }
         color: root.shellConfig.sidebarBackgroundColor
         opacity: root.shellConfig.panelOpacity
         border.color: root.shellConfig.quickSidebarColor
         border.width: root.shellConfig.overlayBorderWidth
         radius: root.shellConfig.sidebarRounding
-
-        Behavior on x {
-            NumberAnimation {
-                duration: 160
-                easing.type: Easing.OutCubic
-            }
-        }
 
         ColumnLayout {
             id: contentCol
@@ -173,7 +229,7 @@ PanelWindow {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: root._flippedBars(root.volumeValue, root.volumeMuted, root.shellConfig.quickSidebarColor)
+                                text: root._flippedBars(root.volumeVisual, root.volumeMuted, root.shellConfig.quickSidebarColor)
                                 color: root.shellConfig.sidebarTextColor
                                 textFormat: Text.RichText
                                 rotation: -90
@@ -230,7 +286,7 @@ PanelWindow {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: root._flippedBars(root.brightnessValue, false, root.shellConfig.quickSidebarColor)
+                                text: root._flippedBars(root.brightnessVisual, false, root.shellConfig.quickSidebarColor)
                                 color: root.shellConfig.sidebarTextColor
                                 textFormat: Text.RichText
                                 rotation: -90
@@ -303,7 +359,7 @@ PanelWindow {
 
     Timer {
         id: sidebarHideTimer
-        interval: 170
+        interval: root.shellConfig.uiAnimationsEnabled ? root.shellConfig.overlaySlideDurationMs + 20 : 1
         repeat: false
         onTriggered: {
             if (!root.sidebarActive)
@@ -356,7 +412,7 @@ PanelWindow {
 
     Process {
         id: volGet
-        command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then v=$(pactl get-sink-volume @DEFAULT_SINK@ | awk '{print $5}' | tr -d '%' | head -n1); m=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}'); echo \"${v:-50} ${m:-no}\"; else echo '50 no'; fi"]
+        command: ["bash", "-lc", "if command -v pactl >/dev/null 2>&1; then v=$(pactl get-sink-volume @DEFAULT_SINK@ | awk 'NR==1{last=\"\";for(i=1;i<=NF;i++)if($i ~ /%/){v=$i;gsub(/%/,\"\",v);last=v}if(last!=\"\")print last}'); m=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}'); echo \"${v:-50} ${m:-no}\"; else echo '50 no'; fi"]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: {

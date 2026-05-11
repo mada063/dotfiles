@@ -273,6 +273,7 @@ ShellRoot {
             wifi: true,
             bluetooth: true,
             audio: true,
+            brightness: true,
             battery: true
         };
     }
@@ -1171,6 +1172,8 @@ ShellRoot {
         property int workspaceMaxIcons: 1
         // "standard" | "uppercase" — titles, buttons, and chrome labels
         property string uiTextStyle: "standard"
+        property bool uiAnimationsEnabled: true
+        property int overlaySlideDurationMs: 280
         property bool controlCenterEnableHotkey: true
         property string controlCenterHotkey: "Ctrl+Alt+C"
         property bool dashboardEnableHotkey: true
@@ -1340,6 +1343,8 @@ ShellRoot {
             workspaceSegmentVisible: store.workspaceSegmentVisible,
             workspaceVisibleCount: store.workspaceVisibleCount,
             workspaceMaxIcons: store.workspaceMaxIcons,
+            uiAnimationsEnabled: store.uiAnimationsEnabled,
+            overlaySlideDurationMs: store.overlaySlideDurationMs,
             uiTextStyle: store.uiTextStyle,
             controlCenterEnableHotkey: store.controlCenterEnableHotkey,
             controlCenterHotkey: store.controlCenterHotkey,
@@ -1732,6 +1737,12 @@ ShellRoot {
                     store.workspaceVisibleCount = cfg.workspaceVisibleCount;
                 if (cfg.workspaceMaxIcons !== undefined)
                     store.workspaceMaxIcons = cfg.workspaceMaxIcons;
+                if (cfg.uiAnimationsEnabled !== undefined)
+                    store.uiAnimationsEnabled = !!cfg.uiAnimationsEnabled;
+                if (cfg.overlaySlideDurationMs !== undefined) {
+                    const d = Math.round(Number(cfg.overlaySlideDurationMs));
+                    store.overlaySlideDurationMs = Number.isFinite(d) ? Math.max(80, Math.min(800, d)) : 280;
+                }
                 if (cfg.uiTextStyle === "uppercase" || cfg.uiTextStyle === "standard")
                     store.uiTextStyle = cfg.uiTextStyle;
                 if (cfg.controlCenterEnableHotkey !== undefined)
@@ -1942,6 +1953,11 @@ ShellRoot {
         property int workspaceVisibleCount: Math.max(1, Number(store.workspaceVisibleCount) || 8)
         property int workspaceMaxIcons: Math.max(0, Number(store.workspaceMaxIcons) || 1)
         property string uiTextStyle: (store.uiTextStyle === "uppercase") ? "uppercase" : "standard"
+        property bool uiAnimationsEnabled: store.uiAnimationsEnabled !== false
+        property int overlaySlideDurationMs: {
+            const d = Math.round(Number(store.overlaySlideDurationMs));
+            return Number.isFinite(d) ? Math.max(80, Math.min(800, d)) : 280;
+        }
         property bool controlCenterEnableHotkey: store.controlCenterEnableHotkey
         property string controlCenterHotkey: store.controlCenterHotkey
         property bool dashboardEnableHotkey: store.dashboardEnableHotkey
@@ -2113,6 +2129,12 @@ ShellRoot {
         onWorkspaceVisibleCountChanged: { store.workspaceVisibleCount = Math.max(1, workspaceVisibleCount); root.queueStoreSave(); }
         onWorkspaceMaxIconsChanged: { store.workspaceMaxIcons = Math.max(0, workspaceMaxIcons); root.queueStoreSave(); }
         onUiTextStyleChanged: { store.uiTextStyle = (uiTextStyle === "uppercase" ? "uppercase" : "standard"); root.queueStoreSave(); }
+        onUiAnimationsEnabledChanged: { store.uiAnimationsEnabled = !!uiAnimationsEnabled; root.queueStoreSave(); }
+        onOverlaySlideDurationMsChanged: {
+            const d = Math.round(Number(overlaySlideDurationMs));
+            store.overlaySlideDurationMs = Number.isFinite(d) ? Math.max(80, Math.min(800, d)) : 280;
+            root.queueStoreSave();
+        }
         onControlCenterEnableHotkeyChanged: { store.controlCenterEnableHotkey = controlCenterEnableHotkey; root.queueStoreSave(); root.queueHyprlandSync(); }
         onControlCenterHotkeyChanged: { store.controlCenterHotkey = controlCenterHotkey; root.queueStoreSave(); root.queueHyprlandSync(); }
         onDashboardEnableHotkeyChanged: { store.dashboardEnableHotkey = dashboardEnableHotkey; root.queueStoreSave(); root.queueHyprlandSync(); }

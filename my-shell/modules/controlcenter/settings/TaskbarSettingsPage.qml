@@ -32,6 +32,7 @@ Item {
         { id: "wifi", label: "Wifi" },
         { id: "bluetooth", label: "Bluetooth" },
         { id: "audio", label: "Audio" },
+        { id: "brightness", label: "Brightness" },
         { id: "battery", label: "Battery" },
         { id: "locks", label: "Locks" }
     ]
