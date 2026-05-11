@@ -1,0 +1,58 @@
+{
+    "id": "ember-flat",
+    "name": "Ember Flat",
+    "themeMode": "dark",
+    "general": {
+      "accentColor": "#FF8C32",
+      "borderColor": "#FF8C32",
+      "backgroundColor": "#111111",
+      "textColor": "#BE5103",
+      "panelColor": "#111111",
+      "mutedTextColor": "#9A8070",
+      "rounding": 0,
+      "borderWidth": 0,
+      "buttonBorderWidth": 0,
+      "overlayBorderWidth": 0,
+      "panelOpacity": 0.96,
+      "overlayDimOpacity": 0.4
+    },
+    "components": {
+      "overlay": {
+        "batteryBarColorCharging": "#FF8C32",
+        "batteryBarColorCritical": "#BE5103",
+        "batteryBarColorLow": "#BE5103",
+        "batteryBarColorMedium": "#BE5103",
+        "batteryBarColorHigh": "#BE5103",
+        "batteryBarColorFull": "#FF8C32"
+      },
+      "workspace": {
+        "rounding": 0,
+        "accentColor": "#BE5103",
+        "textColor": "#F0E6D8",
+        "activeTextColor": "#FF8C32",
+        "activeGroupBackgroundColor": "#7CBE5103",
+        "activeGroupBorderColor": "#BE5103",
+        "highlightColor": "#BE5103",
+        "visualizationBorderColor": "#8C3901",
+        "visualizationBackgroundColor": "#2E1F14"
+      },
+      "dashboard": {
+        "rounding": 0,
+        "wifiDownColor": "#FF8C32",
+        "wifiUpColor": "#BE5103",
+        "batteryPerformanceColor": "#FF8C32"
+      },
+      "settings": {
+        "rounding": 0,
+        "activeSettingTextColor": "#FF8C32",
+        "activeSettingBorderColor": "#FF8C32",
+        "activeSettingBackgroundColor": "#25252C",
+        "settingTextColor": "#BE5103",
+        "settingBorderColor": "#FF8C32",
+        "settingBackgroundColor": "#25252C",
+        "buttonHoverEffectColor": "#BE5103",
+        "buttonActiveColor": "#BE5103",
+        "buttonInactiveColor": "#25252C"
+      }
+    }
+  }
