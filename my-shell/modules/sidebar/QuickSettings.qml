@@ -16,8 +16,10 @@ Item {
     readonly property int edgeMargin: 0
     readonly property int menuW: 400
     readonly property int menuMinH: 100
-    readonly property int triggerW: 250
-    readonly property int triggerH: 50
+    /** Right/bottom screen edge strip (see Settings → Interaction → Edge width). */
+    readonly property int _edgePx: Math.max(1, root.config.sidebarEdgeThresholdPx)
+    readonly property int triggerW: _edgePx
+    readonly property int triggerH: Math.max(_edgePx, 36)
 
     readonly property string uiFontFamily: root.config.fontFamily
     readonly property int uiFontSize: root.config.fontPixelSize
