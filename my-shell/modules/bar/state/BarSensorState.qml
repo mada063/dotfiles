@@ -6,7 +6,13 @@ Item {
     id: root
 
     required property QtObject config
+    /// When false, timers stay off (use a single shared hub; bars bind to its properties).
+    property bool pollingEnabled: true
+    /// Heavy hyprctl + icon resolution; skip when the bar only needs workspace occupancy counts.
+    property bool workspaceClientsPollingEnabled: true
     property bool includeLocks: false
+    /// Top bar clock via `date`; left bar uses in-QML clock and should set this false.
+    property bool clockPollingEnabled: true
     property string dateCommand: "date '+%a %d %b %H:%M'"
     width: 0
     height: 0
@@ -35,9 +41,7 @@ Item {
     property var audioInputs: []
     property string batteryTimeText: "-"
     property string batteryStatusText: "-"
-    property string activeStatusMenu: ""
-    /// Which menu the status panel still draws during slide-out close (cleared after hide animation).
-    property string statusMenuPanelId: ""
+    property string pendingStatusMenuRefresh: ""
     property string wifiConnectSsid: ""
     property string wifiConnectPassword: ""
     property string wifiConnectError: ""
@@ -96,29 +100,45 @@ Item {
         return T("Could not connect. If the network is password-protected, check the password and try again.");
     }
 
-    function refreshStatusMenuData() {
-        if (activeStatusMenu === "wifi") {
+    function _syncOccupiedFromWorkspaceInfos() {
+        if (root.workspaceClientsPollingEnabled)
+            return;
+        const infos = root.workspaceInfos || [];
+        const ids = [];
+        for (let i = 0; i < infos.length; i++) {
+            const info = infos[i] || {};
+            if ((Number(info.windows) || 0) > 0)
+                ids.push(Number(info.id) || 0);
+        }
+        ids.sort((a, b) => a - b);
+        root.occupiedWorkspaceIds = ids;
+    }
+
+    function refreshStatusMenuData(activeMenu) {
+        const menu = String(activeMenu || "");
+        if (menu === "wifi") {
             wifiProc.exec({ command: wifiProc.command });
             wifiDetailProc.exec({ command: wifiDetailProc.command });
             wifiScanProc.exec({ command: wifiScanProc.command });
-        } else if (activeStatusMenu === "bt") {
+        } else if (menu === "bt") {
             btProc.exec({ command: btProc.command });
             btDetailProc.exec({ command: btDetailProc.command });
             btScanProc.exec({ command: btScanProc.command });
-        } else if (activeStatusMenu === "battery") {
+        } else if (menu === "battery") {
             batteryProc.exec({ command: batteryProc.command });
             batteryDetailProc.exec({ command: batteryDetailProc.command });
-        } else if (activeStatusMenu === "audio") {
+        } else if (menu === "audio") {
             audioProc.exec({ command: audioProc.command });
             audioDetailProc.exec({ command: audioDetailProc.command });
             audioOutputsProc.exec({ command: audioOutputsProc.command });
             audioInputsProc.exec({ command: audioInputsProc.command });
-        } else if (activeStatusMenu === "brightness") {
+        } else if (menu === "brightness") {
             brightnessProc.exec({ command: brightnessProc.command });
         }
     }
 
-    function scheduleStatusRefresh() {
+    function scheduleStatusRefresh(activeMenu) {
+        root.pendingStatusMenuRefresh = String(activeMenu || "");
         statusMenuRefreshTimer.restart();
     }
 
@@ -132,8 +152,6 @@ Item {
     }
 
     function handleStatusMenuOpened(name) {
-        activeStatusMenu = name;
-        statusMenuPanelId = name;
         statusMenuRefreshTimer.stop();
         if (name === "wifi") {
             wifiDetailProc.running = true;
@@ -182,9 +200,11 @@ Item {
                     infos.sort((a, b) => a.id - b.id);
                     root.workspaceInfos = infos;
                     root.activeWorkspaceIds = infos.length > 0 ? infos.map(info => info.id) : [1];
+                    root._syncOccupiedFromWorkspaceInfos();
                 } catch (e) {
                     root.workspaceInfos = [];
                     root.activeWorkspaceIds = [1];
+                    root._syncOccupiedFromWorkspaceInfos();
                 }
             }
         }
@@ -532,11 +552,12 @@ Item {
 
     Timer {
         interval: root.mediumPollMs
-        running: root.visible
+        running: root.pollingEnabled && root.visible
         repeat: true
         triggeredOnStart: true
         onTriggered: {
-            dateProc.exec({ command: dateProc.command });
+            if (root.clockPollingEnabled)
+                dateProc.exec({ command: dateProc.command });
             audioProc.exec({ command: audioProc.command });
             batteryProc.exec({ command: batteryProc.command });
             if (root.includeLocks)
@@ -546,7 +567,7 @@ Item {
 
     Timer {
         interval: root.slowPollMs
-        running: root.visible
+        running: root.pollingEnabled && root.visible
         repeat: true
         triggeredOnStart: true
         onTriggered: {
@@ -558,13 +579,14 @@ Item {
 
     Timer {
         interval: root.workspacePollMs
-        running: root.visible
+        running: root.pollingEnabled && root.visible
         repeat: true
         triggeredOnStart: true
         onTriggered: {
             wsListProc.exec({ command: wsListProc.command });
             wsFocusedProc.exec({ command: wsFocusedProc.command });
-            wsClientsProc.exec({ command: wsClientsProc.command });
+            if (root.workspaceClientsPollingEnabled)
+                wsClientsProc.exec({ command: wsClientsProc.command });
             wsMonitorsProc.exec({ command: wsMonitorsProc.command });
         }
     }
@@ -573,6 +595,6 @@ Item {
         id: statusMenuRefreshTimer
         interval: 280
         repeat: false
-        onTriggered: root.refreshStatusMenuData()
+        onTriggered: root.refreshStatusMenuData(root.pendingStatusMenuRefresh)
     }
 }

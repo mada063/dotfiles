@@ -12,6 +12,10 @@ PanelWindow {
 
     required property QtObject shell
     required property QtObject config
+    required property BarState.BarSensorState sensors
+
+    property string activeStatusMenu: ""
+    property string statusMenuPanelId: ""
 
     anchors {
         top: true
@@ -23,7 +27,7 @@ PanelWindow {
     exclusiveZone: 34
     color: "transparent"
 
-    property alias dateTimeText: barState.dateText
+    readonly property string dateTimeText: sensors.dateText
     readonly property string wifiText: root.networkDisplayText
     readonly property string btText: "BT"
     readonly property string batteryText: root._batteryRichText(root.batteryPercent)
@@ -36,14 +40,14 @@ PanelWindow {
             return false;
         return s.indexOf("charging") >= 0;
     }
-    property alias batteryPercent: barState.batteryPercent
-    property alias capsLockOn: barState.capsLockOn
-    property alias numLockOn: barState.numLockOn
-    property alias wifiDetailText: barState.wifiDetailText
-    property alias btDetailText: barState.btDetailText
-    property alias volumePercent: barState.volumePercent
-    property alias volumeMuted: barState.volumeMuted
-    property alias brightnessPercent: barState.brightnessPercent
+    property alias batteryPercent: sensors.batteryPercent
+    property alias capsLockOn: sensors.capsLockOn
+    property alias numLockOn: sensors.numLockOn
+    property alias wifiDetailText: sensors.wifiDetailText
+    property alias btDetailText: sensors.btDetailText
+    property alias volumePercent: sensors.volumePercent
+    property alias volumeMuted: sensors.volumeMuted
+    property alias brightnessPercent: sensors.brightnessPercent
 
     property real volumeVisualBar: 0
     property bool volumeVisualBarReady: false
@@ -89,19 +93,17 @@ PanelWindow {
 
     readonly property string brightnessText: root._brightnessRichText(root.brightnessVisualBar)
 
-    property alias networkEnabled: barState.networkEnabled
-    property alias networkDisplayText: barState.networkDisplayText
-    property alias networkTypeText: barState.networkTypeText
-    property alias wifiDeviceName: barState.wifiDeviceName
-    property alias wifiConnected: barState.wifiConnected
-    property alias btEnabled: barState.btEnabled
-    property alias btDiscoverable: barState.btDiscoverable
-    property alias audioOutputs: barState.audioOutputs
-    property alias audioInputs: barState.audioInputs
-    property alias batteryTimeText: barState.batteryTimeText
-    property alias batteryStatusText: barState.batteryStatusText
-    property alias activeStatusMenu: barState.activeStatusMenu
-    property alias statusMenuPanelId: barState.statusMenuPanelId
+    property alias networkEnabled: sensors.networkEnabled
+    property alias networkDisplayText: sensors.networkDisplayText
+    property alias networkTypeText: sensors.networkTypeText
+    property alias wifiDeviceName: sensors.wifiDeviceName
+    property alias wifiConnected: sensors.wifiConnected
+    property alias btEnabled: sensors.btEnabled
+    property alias btDiscoverable: sensors.btDiscoverable
+    property alias audioOutputs: sensors.audioOutputs
+    property alias audioInputs: sensors.audioInputs
+    property alias batteryTimeText: sensors.batteryTimeText
+    property alias batteryStatusText: sensors.batteryStatusText
     property real statusMenuLeftX: Math.max(0, root.width - 280)
     property int statusMenuWidth: 280
     readonly property int wifiStatusMenuWidth: 350
@@ -110,19 +112,19 @@ PanelWindow {
     readonly property int brightnessStatusMenuWidth: 288
     readonly property int batteryStatusMenuWidth: 220
     readonly property int locksStatusMenuWidth: 132
-    property alias wifiConnectSsid: barState.wifiConnectSsid
-    property alias wifiConnectPassword: barState.wifiConnectPassword
-    property alias wifiConnectError: barState.wifiConnectError
-    property alias wifiConnecting: barState.wifiConnecting
-    property alias btDeviceTarget: barState.btDeviceTarget
-    property alias wifiNetworks: barState.wifiNetworks
-    property alias btDevices: barState.btDevices
-    property alias activeWorkspaceIds: barState.activeWorkspaceIds
-    property alias occupiedWorkspaceIds: barState.occupiedWorkspaceIds
-    property alias focusedWorkspaceId: barState.focusedWorkspaceId
-    readonly property var workspaceInfos: barState.workspaceInfos
-    readonly property var workspaceMonitors: barState.workspaceMonitors
-    property alias workspaceClients: barState.workspaceClients
+    property alias wifiConnectSsid: sensors.wifiConnectSsid
+    property alias wifiConnectPassword: sensors.wifiConnectPassword
+    property alias wifiConnectError: sensors.wifiConnectError
+    property alias wifiConnecting: sensors.wifiConnecting
+    property alias btDeviceTarget: sensors.btDeviceTarget
+    property alias wifiNetworks: sensors.wifiNetworks
+    property alias btDevices: sensors.btDevices
+    property alias activeWorkspaceIds: sensors.activeWorkspaceIds
+    property alias occupiedWorkspaceIds: sensors.occupiedWorkspaceIds
+    property alias focusedWorkspaceId: sensors.focusedWorkspaceId
+    readonly property var workspaceInfos: sensors.workspaceInfos
+    readonly property var workspaceMonitors: sensors.workspaceMonitors
+    property alias workspaceClients: sensors.workspaceClients
     property bool statusMenuInputFocused: false
     readonly property real statusMenuContentWidth: Math.max(240, statusMenuWindow.width - 16)
     property bool statusMenuHugWidth: false
@@ -282,14 +284,6 @@ PanelWindow {
         return Math.max(30, labelWidth + 14 + iconsWidth + dotWidth);
     }
 
-    BarState.BarSensorState {
-        id: barState
-        config: root.config
-        visible: root.visible
-        includeLocks: true
-        dateCommand: root._dateCommand()
-    }
-
     FontMetrics {
         id: statusMenuFontMetrics
         font.family: root.uiFontFamily
@@ -321,6 +315,7 @@ PanelWindow {
         _applyFontRecursive(statusMenuWindow);
     }
     Component.onCompleted: {
+        sensors.dateCommand = root._dateCommand();
         root.volumeVisualBar = Math.max(0, Math.min(100, root.volumePercent));
         root.volumeVisualBarReady = true;
         root.brightnessVisualBar = Math.max(1, Math.min(100, root.brightnessPercent));
@@ -573,17 +568,18 @@ PanelWindow {
     }
 
     function refreshStatusMenuData() {
-        barState.refreshStatusMenuData();
+        sensors.refreshStatusMenuData(root.activeStatusMenu);
     }
 
     function scheduleStatusRefresh() {
-        barState.scheduleStatusRefresh();
+        sensors.scheduleStatusRefresh(root.activeStatusMenu);
     }
 
     function openStatusMenu(name, chipX) {
         statusPopupCloseTimer.stop();
         statusMenuInputFocused = false;
         activeStatusMenu = name;
+        statusMenuPanelId = name;
         let desiredWidth = wifiStatusMenuWidth;
         if (name === "locks")
             desiredWidth = locksStatusMenuWidth;
@@ -601,7 +597,7 @@ PanelWindow {
             const overflow = Math.max(0, leftX + desiredWidth - root.width);
             statusMenuLeftX = Math.max(0, leftX - overflow);
         }
-        barState.handleStatusMenuOpened(name);
+        sensors.handleStatusMenuOpened(name);
     }
 
     function queueStatusMenuClose(name) {
@@ -656,8 +652,8 @@ PanelWindow {
     }
 
     function rescanWifi() {
-        barState.handleStatusMenuOpened("wifi");
-        barState.refreshStatusMenuData();
+        sensors.handleStatusMenuOpened("wifi");
+        sensors.refreshStatusMenuData();
     }
 
     function toggleBtEnabled() {
@@ -685,8 +681,8 @@ PanelWindow {
     }
 
     function rescanBt() {
-        barState.handleStatusMenuOpened("bt");
-        barState.refreshStatusMenuData();
+        sensors.handleStatusMenuOpened("bt");
+        sensors.refreshStatusMenuData();
     }
 
     function audioStep(delta) {
@@ -1537,7 +1533,7 @@ PanelWindow {
                 return;
             }
             const raw = String(wifiConnectStderrCollector.text || "").trim();
-            root.wifiConnectError = barState.humanizeWifiConnectError(raw);
+            root.wifiConnectError = sensors.humanizeWifiConnectError(raw);
         }
     }
     Process { id: wifiDisconnectProc }
@@ -1584,7 +1580,7 @@ PanelWindow {
         interval: 140
         repeat: false
         onTriggered: {
-            barState.refreshAudioData();
+            sensors.refreshAudioData();
         }
     }
 
@@ -1592,11 +1588,11 @@ PanelWindow {
         id: brightnessRefreshTimer
         interval: 140
         repeat: false
-        onTriggered: barState.refreshBrightnessData()
+        onTriggered: sensors.refreshBrightnessData()
     }
 
     Connections {
-        target: barState
+        target: sensors
         function onActiveStatusMenuChanged() {
             if (root.activeStatusMenu !== "wifi") {
                 root.statusMenuInputFocused = false;

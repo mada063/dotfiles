@@ -784,6 +784,7 @@ PanelWindow {
 
     Timer {
         interval: root.fastPollMs
+        // Poll whenever dashboard is open so perf graph history fills and rates stay meaningful when switching tabs.
         running: root.visible
         repeat: true
         triggeredOnStart: true
@@ -796,16 +797,6 @@ PanelWindow {
                 ramProc.exec({ command: ramProc.command });
             if (!mediaProc.running)
                 mediaProc.exec({ command: mediaProc.command });
-        }
-    }
-
-    Timer {
-        interval: root.fastPollMs
-        // Poll whenever dashboard is open so perf graph history fills and rates stay meaningful when switching tabs.
-        running: root.visible
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
             if (!netProc.running)
                 netProc.exec({ command: netProc.command });
         }

@@ -162,7 +162,6 @@ PanelWindow {
         _applyFontRecursive(root);
         suppressEdgeTrigger = true;
         startupEdgeGuard.start();
-        refreshSidebarStates();
     }
 
     readonly property int _cardHeight: Math.max(70, Math.min(200, root.shellConfig.sidebarSliderHeight))
